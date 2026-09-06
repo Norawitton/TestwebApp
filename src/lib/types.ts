@@ -12,6 +12,7 @@ export type CategoryId =
   | "utilities"
   | "health"
   | "education"
+  | "investment"
   | "income"
   | "other";
 

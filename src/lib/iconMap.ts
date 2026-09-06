@@ -6,6 +6,7 @@ import {
   Zap,
   HeartPulse,
   GraduationCap,
+  TrendingUp,
   Wallet,
   MoreHorizontal,
   LucideIcon,
@@ -19,6 +20,7 @@ export const ICON_MAP: Record<string, LucideIcon> = {
   Zap,
   HeartPulse,
   GraduationCap,
+  TrendingUp,
   Wallet,
   MoreHorizontal,
 };

@@ -50,6 +50,13 @@ export const CATEGORIES: Record<CategoryId, Category> = {
     color: "#FFD64F",
     icon: "GraduationCap",
   },
+  investment: {
+    id: "investment",
+    label: "การลงทุน",
+    labelEn: "Investment",
+    color: "#6C63FF",
+    icon: "TrendingUp",
+  },
   income: {
     id: "income",
     label: "รายรับ",
@@ -74,6 +81,7 @@ export const EXPENSE_CATEGORY_LIST: CategoryId[] = [
   "utilities",
   "health",
   "education",
+  "investment",
   "other",
 ];
 
