@@ -3,7 +3,7 @@ import "./globals.css";
 
 export const metadata: Metadata = {
   title: "ออมกัน (AomGun) — จดง่าย ออมได้จริง",
-  description: "แอปจัดการรายรับ-รายจ่าย บันทึกสลิป ตั้งงบประมาณ และวิเคราะห์การใช้เงินกับน้องออม",
+  description: "แอปจัดการรายรับ-รายจ่าย ตั้งงบประมาณ และวิเคราะห์การใช้เงินกับน้องออม",
   manifest: "/manifest.json",
 };
 

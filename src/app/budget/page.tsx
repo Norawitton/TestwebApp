@@ -12,21 +12,38 @@ import { useAppData } from "@/hooks/useAppData";
 import { currentMonthKey, filterByMonth, sumByCategory, sumByType } from "@/lib/analytics";
 import { formatBaht, percent } from "@/lib/format";
 import { CATEGORIES, EXPENSE_CATEGORY_LIST } from "@/lib/categories";
+import { CategoryId } from "@/lib/types";
 import { Plus, X } from "lucide-react";
 import { clsx } from "clsx";
+
+// แปลงข้อความช่องกรอกเป็นจำนวนเงินที่ใช้ได้ (>= 0) — คืนค่า null ถ้ากรอกไม่ถูกต้อง
+// (ว่าง/ไม่ใช่ตัวเลข/ติดลบ) แทนที่จะใช้ `Number(input) || fallback` เพราะ 0 เป็นค่า
+// falsy ใน JS ทำให้พิมพ์ 0 แล้วเงียบๆ กลับไปใช้ค่าเดิมแทนที่จะบันทึกเป็น 0 จริงๆ
+function parseAmountInput(input: string): number | null {
+  if (input.trim() === "") return null;
+  const n = Number(input);
+  return Number.isNaN(n) || n < 0 ? null : n;
+}
 
 export default function BudgetPage() {
   const { transactions, budget, goals, loading, saveBudget, addGoal, editGoal, removeGoal } = useAppData();
   const [editingTotal, setEditingTotal] = useState(false);
   const [totalInput, setTotalInput] = useState("");
+  const [totalError, setTotalError] = useState("");
   const [editingCategory, setEditingCategory] = useState<string | null>(null);
   const [categoryInput, setCategoryInput] = useState("");
+  const [categoryError, setCategoryError] = useState("");
   const [showGoalForm, setShowGoalForm] = useState(false);
+  const [showAddCategoryBudget, setShowAddCategoryBudget] = useState(false);
 
   const monthKey = currentMonthKey();
   const monthTx = useMemo(() => filterByMonth(transactions, monthKey), [transactions, monthKey]);
   const totalSpent = sumByType(monthTx, "expense");
   const byCategory = useMemo(() => sumByCategory(monthTx), [monthTx]);
+  const availableCategoriesForBudget = useMemo(
+    () => EXPENSE_CATEGORY_LIST.filter((c) => !(budget?.categoryLimits ?? []).some((cl) => cl.category === c)),
+    [budget]
+  );
 
   if (loading || !budget) {
     return (
@@ -55,6 +72,7 @@ export default function BudgetPage() {
             <button
               onClick={() => {
                 setEditingTotal(true);
+                setTotalError("");
                 setTotalInput(budget.totalLimit.toString());
               }}
               className="text-xs font-semibold text-ag-blue"
@@ -64,22 +82,30 @@ export default function BudgetPage() {
           </div>
 
           {editingTotal ? (
-            <div className="flex items-center gap-2">
-              <input
-                inputMode="numeric"
-                value={totalInput}
-                onChange={(e) => setTotalInput(e.target.value.replace(/[^\d]/g, ""))}
-                className="h-11 flex-1 rounded-2xl border border-ag-grayblue px-4 text-sm outline-none focus:border-ag-blue"
-              />
-              <Button
-                size="md"
-                onClick={async () => {
-                  await saveBudget({ totalLimit: Number(totalInput) || budget.totalLimit });
-                  setEditingTotal(false);
-                }}
-              >
-                บันทึก
-              </Button>
+            <div>
+              <div className="flex items-center gap-2">
+                <input
+                  inputMode="numeric"
+                  value={totalInput}
+                  onChange={(e) => { setTotalInput(e.target.value.replace(/[^\d]/g, "")); setTotalError(""); }}
+                  className="h-11 flex-1 rounded-2xl border border-ag-grayblue px-4 text-sm outline-none focus:border-ag-blue"
+                />
+                <Button
+                  size="md"
+                  onClick={async () => {
+                    const parsed = parseAmountInput(totalInput);
+                    if (parsed === null) {
+                      setTotalError("กรุณากรอกจำนวนเงินให้ถูกต้อง");
+                      return;
+                    }
+                    await saveBudget({ totalLimit: parsed });
+                    setEditingTotal(false);
+                  }}
+                >
+                  บันทึก
+                </Button>
+              </div>
+              {totalError && <p className="mt-1.5 text-xs font-semibold text-ag-coral">{totalError}</p>}
             </div>
           ) : (
             <>
@@ -111,57 +137,91 @@ export default function BudgetPage() {
 
         {/* Category budgets */}
         <Card>
-          <h2 className="mb-3 font-bold text-ag-text">งบประมาณแยกหมวดหมู่</h2>
-          <div className="flex flex-col gap-4">
-            {budget.categoryLimits.map((cl) => {
-              const spent = byCategory[cl.category] ?? 0;
-              const pct = percent(spent, cl.limit);
-              const isEditing = editingCategory === cl.category;
-              return (
-                <div key={cl.category}>
-                  <div className="mb-1.5 flex items-center gap-2.5">
-                    <CategoryIcon category={cl.category} size={36} iconSize={16} />
-                    <span className="flex-1 text-sm font-semibold text-ag-text">
-                      {CATEGORIES[cl.category].label}
-                    </span>
-                    {isEditing ? (
-                      <div className="flex items-center gap-1.5">
-                        <input
-                          inputMode="numeric"
-                          value={categoryInput}
-                          onChange={(e) => setCategoryInput(e.target.value.replace(/[^\d]/g, ""))}
-                          className="h-8 w-20 rounded-lg border border-ag-grayblue px-2 text-xs outline-none"
-                        />
-                        <button
-                          onClick={async () => {
-                            const next = budget.categoryLimits.map((c) =>
-                              c.category === cl.category ? { ...c, limit: Number(categoryInput) || c.limit } : c
-                            );
-                            await saveBudget({ categoryLimits: next });
-                            setEditingCategory(null);
-                          }}
-                          className="text-xs font-bold text-ag-blue"
-                        >
-                          บันทึก
-                        </button>
-                      </div>
-                    ) : (
-                      <button
-                        onClick={() => {
-                          setEditingCategory(cl.category);
-                          setCategoryInput(cl.limit.toString());
-                        }}
-                        className="ag-money text-xs font-semibold text-ag-text-secondary"
-                      >
-                        {formatBaht(spent)} / {formatBaht(cl.limit)}
-                      </button>
-                    )}
-                  </div>
-                  <ProgressBar percent={pct} height={8} />
-                </div>
-              );
-            })}
+          <div className="mb-3 flex items-center justify-between">
+            <h2 className="font-bold text-ag-text">งบประมาณแยกหมวดหมู่</h2>
+            {availableCategoriesForBudget.length > 0 && (
+              <button
+                onClick={() => setShowAddCategoryBudget(true)}
+                className="flex items-center gap-1 text-xs font-semibold text-ag-blue"
+              >
+                <Plus size={14} /> เพิ่มหมวดหมู่
+              </button>
+            )}
           </div>
+          {budget.categoryLimits.length === 0 ? (
+            <p className="text-sm text-ag-text-secondary">
+              ยังไม่มีงบประมาณแยกหมวดหมู่ กด &quot;เพิ่มหมวดหมู่&quot; เพื่อเริ่มตั้งงบ
+            </p>
+          ) : (
+            <div className="flex flex-col gap-4">
+              {budget.categoryLimits.map((cl) => {
+                const spent = byCategory[cl.category] ?? 0;
+                const pct = percent(spent, cl.limit);
+                const isEditing = editingCategory === cl.category;
+                return (
+                  <div key={cl.category}>
+                    <div className="mb-1.5 flex items-center gap-2.5">
+                      <CategoryIcon category={cl.category} size={36} iconSize={16} />
+                      <span className="flex-1 text-sm font-semibold text-ag-text">
+                        {CATEGORIES[cl.category].label}
+                      </span>
+                      {isEditing ? (
+                        <div className="flex items-center gap-1.5">
+                          <input
+                            inputMode="numeric"
+                            value={categoryInput}
+                            onChange={(e) => { setCategoryInput(e.target.value.replace(/[^\d]/g, "")); setCategoryError(""); }}
+                            className="h-8 w-20 rounded-lg border border-ag-grayblue px-2 text-xs outline-none"
+                          />
+                          <button
+                            onClick={async () => {
+                              const parsed = parseAmountInput(categoryInput);
+                              if (parsed === null) {
+                                setCategoryError("จำนวนไม่ถูกต้อง");
+                                return;
+                              }
+                              const next = budget.categoryLimits.map((c) =>
+                                c.category === cl.category ? { ...c, limit: parsed } : c
+                              );
+                              await saveBudget({ categoryLimits: next });
+                              setEditingCategory(null);
+                            }}
+                            className="text-xs font-bold text-ag-blue"
+                          >
+                            บันทึก
+                          </button>
+                        </div>
+                      ) : (
+                        <>
+                          <button
+                            onClick={() => {
+                              setEditingCategory(cl.category);
+                              setCategoryError("");
+                              setCategoryInput(cl.limit.toString());
+                            }}
+                            className="ag-money text-xs font-semibold text-ag-text-secondary"
+                          >
+                            {formatBaht(spent)} / {formatBaht(cl.limit)}
+                          </button>
+                          <button
+                            onClick={() => saveBudget({ categoryLimits: budget.categoryLimits.filter((c) => c.category !== cl.category) })}
+                            aria-label={`ลบงบ${CATEGORIES[cl.category].label}`}
+                            className="text-ag-text-secondary"
+                          >
+                            <X size={14} />
+                          </button>
+                        </>
+                      )}
+                    </div>
+                    {isEditing && categoryError && (
+                      <p className="mb-1.5 text-xs font-semibold text-ag-coral">{categoryError}</p>
+                    )}
+                    <ProgressBar percent={pct} height={8} />
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </Card>
 
         {/* Saving goals */}
@@ -218,6 +278,17 @@ export default function BudgetPage() {
           onCreate={async (goal) => {
             await addGoal(goal);
             setShowGoalForm(false);
+          }}
+        />
+      )}
+
+      {showAddCategoryBudget && (
+        <AddCategoryBudgetSheet
+          categories={availableCategoriesForBudget}
+          onClose={() => setShowAddCategoryBudget(false)}
+          onCreate={async ({ category, limit }) => {
+            await saveBudget({ categoryLimits: [...budget.categoryLimits, { category, limit }] });
+            setShowAddCategoryBudget(false);
           }}
         />
       )}
@@ -294,6 +365,76 @@ function NewGoalSheet({
 
         <Button variant="primary" size="lg" fullWidth onClick={handleCreate} className="mt-3">
           สร้างเป้าหมาย
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+function AddCategoryBudgetSheet({
+  categories,
+  onClose,
+  onCreate,
+}: {
+  categories: CategoryId[];
+  onClose: () => void;
+  onCreate: (input: { category: CategoryId; limit: number }) => void;
+}) {
+  const [category, setCategory] = useState<CategoryId>(categories[0]);
+  const [limitInput, setLimitInput] = useState("");
+  const [error, setError] = useState("");
+
+  function handleCreate() {
+    const parsed = parseAmountInput(limitInput);
+    if (parsed === null || parsed <= 0) {
+      setError("กรุณากรอกวงเงินให้ถูกต้อง");
+      return;
+    }
+    onCreate({ category, limit: parsed });
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-end justify-center">
+      <button aria-label="ปิด" onClick={onClose} className="absolute inset-0 bg-ag-navy/50" />
+      <div className="relative z-10 w-full max-w-[480px] rounded-t-[28px] bg-white p-5 pb-8 ag-animate-slide-up">
+        <div className="mx-auto mb-4 h-1.5 w-12 rounded-full bg-ag-grayblue" />
+        <h2 className="mb-4 text-lg font-bold text-ag-text">เพิ่มงบประมาณตามหมวดหมู่</h2>
+
+        <label className="mb-1.5 block text-sm font-semibold text-ag-text">หมวดหมู่</label>
+        <div className="mb-4 grid grid-cols-4 gap-3">
+          {categories.map((c) => (
+            <button
+              key={c}
+              onClick={() => setCategory(c)}
+              className="flex flex-col items-center gap-1.5"
+            >
+              <div
+                className={clsx(
+                  "flex h-14 w-14 items-center justify-center rounded-2xl transition-all",
+                  category === c && "ring-2 ring-ag-blue ring-offset-2"
+                )}
+              >
+                <CategoryIcon category={c} size={52} iconSize={24} />
+              </div>
+              <span className="text-center text-[11px] leading-tight text-ag-text-secondary">
+                {CATEGORIES[c].label}
+              </span>
+            </button>
+          ))}
+        </div>
+
+        <label className="mb-1.5 block text-sm font-semibold text-ag-text">วงเงินต่อเดือน</label>
+        <input
+          inputMode="numeric"
+          value={limitInput}
+          onChange={(e) => { setLimitInput(e.target.value.replace(/[^\d]/g, "")); setError(""); }}
+          placeholder="0"
+          className="mb-1 h-12 w-full rounded-2xl border border-ag-grayblue px-4 text-sm outline-none focus:border-ag-blue"
+        />
+        {error && <p className="mb-3 text-xs font-semibold text-ag-coral">{error}</p>}
+
+        <Button variant="primary" size="lg" fullWidth onClick={handleCreate} className="mt-3">
+          เพิ่มงบประมาณ
         </Button>
       </div>
     </div>
