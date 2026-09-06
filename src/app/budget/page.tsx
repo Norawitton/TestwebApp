@@ -34,6 +34,7 @@ export default function BudgetPage() {
   const [categoryInput, setCategoryInput] = useState("");
   const [categoryError, setCategoryError] = useState("");
   const [showGoalForm, setShowGoalForm] = useState(false);
+  const [bumpingGoalId, setBumpingGoalId] = useState<string | null>(null);
   const [showAddCategoryBudget, setShowAddCategoryBudget] = useState(false);
 
   const monthKey = currentMonthKey();
@@ -260,8 +261,20 @@ export default function BudgetPage() {
                 <ProgressBar percent={pct} />
                 <div className="mt-2 flex justify-end gap-2">
                   <button
-                    onClick={() => editGoal(g.id, { currentAmount: g.currentAmount + 500 })}
-                    className="rounded-full bg-ag-grayblue px-3 py-1 text-xs font-semibold text-ag-text"
+                    onClick={async () => {
+                      // กันกดรัวๆ: ถ้าไม่ล็อกปุ่มระหว่างบันทึก การกด 2 ครั้งเร็วๆ
+                      // จะอ่าน g.currentAmount ค่าเดิม (ก่อน refresh) ทั้งคู่ ทำให้
+                      // ยอดเพิ่มแค่ +500 ครั้งเดียวทั้งที่กดไป 2 ครั้ง
+                      if (bumpingGoalId === g.id) return;
+                      setBumpingGoalId(g.id);
+                      try {
+                        await editGoal(g.id, { currentAmount: g.currentAmount + 500 });
+                      } finally {
+                        setBumpingGoalId(null);
+                      }
+                    }}
+                    disabled={bumpingGoalId === g.id}
+                    className="rounded-full bg-ag-grayblue px-3 py-1 text-xs font-semibold text-ag-text disabled:opacity-50"
                   >
                     +฿500
                   </button>
@@ -301,16 +314,18 @@ function NewGoalSheet({
   onCreate,
 }: {
   onClose: () => void;
-  onCreate: (goal: { name: string; targetAmount: number; currentAmount: number; emoji: string; color: string }) => void;
+  onCreate: (goal: { name: string; targetAmount: number; currentAmount: number; emoji: string; color: string }) => Promise<void>;
 }) {
   const [name, setName] = useState("");
   const [target, setTarget] = useState("");
   const [emoji, setEmoji] = useState("🎯");
   const [error, setError] = useState<string | undefined>();
+  const [saving, setSaving] = useState(false);
 
   const EMOJIS = ["🎯", "🏖️", "🏠", "🚗", "🎓", "💍", "📱", "🛟"];
 
-  function handleCreate() {
+  async function handleCreate() {
+    if (saving) return; // กันกดซ้ำระหว่างบันทึก ไม่งั้นได้เป้าหมายซ้ำ 2 อัน
     const numeric = Number(target);
     if (!name.trim()) {
       setError("กรุณาตั้งชื่อเป้าหมาย");
@@ -320,7 +335,13 @@ function NewGoalSheet({
       setError("กรุณากรอกจำนวนเงินเป้าหมายให้ถูกต้อง");
       return;
     }
-    onCreate({ name: name.trim(), targetAmount: numeric, currentAmount: 0, emoji, color: "#1689F5" });
+    setSaving(true);
+    try {
+      await onCreate({ name: name.trim(), targetAmount: numeric, currentAmount: 0, emoji, color: "#1689F5" });
+    } catch {
+      setError("สร้างเป้าหมายไม่สำเร็จ ลองใหม่อีกครั้ง");
+      setSaving(false);
+    }
   }
 
   return (
@@ -363,8 +384,8 @@ function NewGoalSheet({
         />
         {error && <p className="mb-3 text-xs font-semibold text-ag-coral">{error}</p>}
 
-        <Button variant="primary" size="lg" fullWidth onClick={handleCreate} className="mt-3">
-          สร้างเป้าหมาย
+        <Button variant="primary" size="lg" fullWidth onClick={handleCreate} disabled={saving} className="mt-3">
+          {saving ? "กำลังบันทึก..." : "สร้างเป้าหมาย"}
         </Button>
       </div>
     </div>

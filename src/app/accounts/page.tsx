@@ -24,6 +24,7 @@ export default function AccountsPage() {
   const [showAdd, setShowAdd] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState<Account | null>(null);
   const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState("");
 
   const creditCards = accounts.filter((a) => a.type === "credit_card");
   const others = accounts.filter((a) => a.type !== "credit_card");
@@ -31,9 +32,14 @@ export default function AccountsPage() {
   async function handleConfirmDelete() {
     if (!confirmDelete) return;
     setDeleting(true);
+    setDeleteError("");
     try {
       await removeAccount(confirmDelete.id);
       setConfirmDelete(null);
+    } catch {
+      // เดิม deleteFinancialAccount() คืนค่าเงียบๆ ตอน error ทำให้ตรงนี้ปิด
+      // dialog เหมือนลบสำเร็จอยู่ดีแม้จะลบไม่สำเร็จจริง — เช็คแล้วโชว์ error จริง
+      setDeleteError("ลบบัญชีไม่สำเร็จ ลองใหม่อีกครั้ง");
     } finally {
       setDeleting(false);
     }
@@ -72,7 +78,7 @@ export default function AccountsPage() {
                           {a.last4 && <span className="text-ag-text-secondary"> •••• {a.last4}</span>}
                         </p>
                         <button
-                          onClick={() => setConfirmDelete(a)}
+                          onClick={() => { setConfirmDelete(a); setDeleteError(""); }}
                           aria-label="ลบบัตร"
                           className="shrink-0 p-1 active:scale-90"
                         >
@@ -103,7 +109,7 @@ export default function AccountsPage() {
                         </p>
                       </div>
                       <button
-                        onClick={() => setConfirmDelete(a)}
+                        onClick={() => { setConfirmDelete(a); setDeleteError(""); }}
                         aria-label="ลบบัญชี"
                         className="shrink-0 p-1.5 active:scale-90"
                       >
@@ -144,6 +150,7 @@ export default function AccountsPage() {
             <p className="mt-1 text-sm text-ag-text-secondary">
               รายการที่เคยบันทึกไว้ในบัญชีนี้จะยังอยู่ในประวัติ แต่จะไม่สามารถกรองตามชื่อบัญชีนี้ได้อีก
             </p>
+            {deleteError && <p className="mt-2 text-xs font-semibold text-ag-coral">{deleteError}</p>}
             <div className="mt-5 flex gap-3">
               <button
                 onClick={() => setConfirmDelete(null)}

@@ -113,7 +113,10 @@ export async function updateTransaction(
     .eq("user_id", userId)
     .select()
     .single();
-  if (error) return null;
+  // เดิมคืน null เงียบๆ เวลา error ทำให้ผู้เรียกแยกไม่ออกระหว่าง "แก้ไขสำเร็จ"
+  // กับ "แก้ไขล้มเหลว" (เช่น รายการถูกลบไปแล้ว, เน็ตหลุด) — โยน error ออกไปแทน
+  // เพื่อให้ UI (เช่น TransactionForm) จับได้และไม่ขึ้นข้อความ "สำเร็จ" มั่ว
+  if (error) throw error;
   return rowToTransaction(data);
 }
 
@@ -201,14 +204,16 @@ export async function updateAccount(
 
 // หมายเหตุ: ตั้งชื่อ deleteFinancialAccount เพื่อไม่ให้สับสนกับ deleteAccount()
 // ด้านล่าง ซึ่งหมายถึงการลบ "บัญชีผู้ใช้" (user account) ทั้งหมด ไม่ใช่บัญชีการเงิน
-export async function deleteFinancialAccount(id: string): Promise<boolean> {
+export async function deleteFinancialAccount(id: string): Promise<void> {
   const userId = await getUserId();
   const { error } = await supabase
     .from("accounts")
     .delete()
     .eq("id", id)
     .eq("user_id", userId);
-  return !error;
+  // เดิมคืน boolean เงียบๆ ตอน error ทำให้ผู้เรียก (เช่นหน้า /accounts)
+  // ปิด dialog ยืนยันเหมือนลบสำเร็จอยู่ดีแม้จะลบไม่สำเร็จจริง
+  if (error) throw error;
 }
 
 // ---------------- Budget ----------------

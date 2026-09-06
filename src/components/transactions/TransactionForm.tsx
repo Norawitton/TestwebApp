@@ -58,6 +58,7 @@ export function TransactionForm({ type, title, restrictToAccountType, existing }
   const [errors, setErrors] = useState<FormErrors>({});
   const [saving, setSaving] = useState(false);
   const [success, setSuccess] = useState(false);
+  const [submitError, setSubmitError] = useState("");
 
   const availableAccounts = restrictToAccountType
     ? accounts.filter((a) => a.type === restrictToAccountType)
@@ -86,33 +87,45 @@ export function TransactionForm({ type, title, restrictToAccountType, existing }
   async function handleSubmit() {
     if (!validate()) return;
     setSaving(true);
+    setSubmitError("");
     const numeric = Number(amount.replace(/,/g, ""));
     const status = pending ? "pending" : "completed";
-    if (existing) {
-      await editTransaction(existing.id, {
-        amount: numeric,
-        merchant: merchant.trim(),
-        category,
-        accountId,
-        date: combineDateWithNow(dateStr),
-        // ส่งเป็น "" แทน undefined ตอนแก้ไข เพราะ updateTransaction() จะข้าม
-        // field ที่เป็น undefined ไปเลย (ถือว่า "ไม่แตะ") — ถ้าผู้ใช้ลบโน้ต
-        // ทิ้งแล้วส่ง undefined ไป โน้ตเดิมจะไม่ถูกล้างออกจริง
-        note: note.trim(),
-        status,
-      });
-    } else {
-      await addTransaction({
-        type,
-        amount: numeric,
-        merchant: merchant.trim(),
-        category,
-        accountId,
-        date: combineDateWithNow(dateStr),
-        note: note.trim() || undefined,
-        source: restrictToAccountType === "credit_card" ? "credit_card" : "manual",
-        status,
-      });
+    try {
+      if (existing) {
+        await editTransaction(existing.id, {
+          amount: numeric,
+          merchant: merchant.trim(),
+          category,
+          accountId,
+          date: combineDateWithNow(dateStr),
+          // ส่งเป็น "" แทน undefined ตอนแก้ไข เพราะ updateTransaction() จะข้าม
+          // field ที่เป็น undefined ไปเลย (ถือว่า "ไม่แตะ") — ถ้าผู้ใช้ลบโน้ต
+          // ทิ้งแล้วส่ง undefined ไป โน้ตเดิมจะไม่ถูกล้างออกจริง
+          note: note.trim(),
+          status,
+        });
+      } else {
+        await addTransaction({
+          type,
+          amount: numeric,
+          merchant: merchant.trim(),
+          category,
+          accountId,
+          date: combineDateWithNow(dateStr),
+          note: note.trim() || undefined,
+          source: restrictToAccountType === "credit_card" ? "credit_card" : "manual",
+          status,
+        });
+      }
+    } catch (err) {
+      // เดิม updateTransaction() คืน null เงียบๆ ตอน error ทำให้ตรงนี้ไม่มีทาง
+      // รู้ว่าล้มเหลว แล้วขึ้นหน้า "สำเร็จ" หลอกผู้ใช้ไปเลย — เช็คแล้วโชว์ error จริง
+      console.error("บันทึกรายการไม่สำเร็จ:", err);
+      setSaving(false);
+      setSubmitError(
+        existing ? "แก้ไขรายการไม่สำเร็จ ลองใหม่อีกครั้ง" : "บันทึกรายการไม่สำเร็จ ลองใหม่อีกครั้ง"
+      );
+      return;
     }
     setSaving(false);
     setSuccess(true);
@@ -276,6 +289,10 @@ export function TransactionForm({ type, title, restrictToAccountType, existing }
             className="h-5 w-5 shrink-0 accent-ag-blue"
           />
         </label>
+
+        {submitError && (
+          <p className="text-center text-sm font-semibold text-ag-coral">{submitError}</p>
+        )}
 
         <Button variant="primary" size="lg" fullWidth onClick={handleSubmit} disabled={saving}>
           {saving ? "กำลังบันทึก..." : existing ? "บันทึกการแก้ไข" : "บันทึกรายการ"}
