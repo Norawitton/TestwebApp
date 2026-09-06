@@ -158,7 +158,11 @@ export default function HistoryPage() {
                     swiped={swipedId === tx.id}
                     onSwipe={() => setSwipedId(swipedId === tx.id ? null : tx.id)}
                     onDelete={() => removeTransaction(tx.id)}
-                    onConfirm={() => editTransaction(tx.id, { status: "completed" })}
+                    onConfirm={() =>
+                      editTransaction(tx.id, { status: "completed" }).catch((err) =>
+                        console.error("ยืนยันรายการไม่สำเร็จ:", err)
+                      )
+                    }
                   />
                 ))}
               </div>
