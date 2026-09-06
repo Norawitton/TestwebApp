@@ -1,0 +1,16 @@
+<svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="fur" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#F5A94E"/>
+      <stop offset="100%" stop-color="#E78132"/>
+    </linearGradient>
+  </defs>
+  <rect width="200" height="200" rx="44" fill="#FFED9A"/>
+  <circle cx="100" cy="112" r="58" fill="url(#fur)"/>
+  <path d="M55 74 Q47 38 78 50 Q68 70 62 82 Z" fill="#E78132"/>
+  <path d="M145 74 Q153 38 122 50 Q132 70 138 82 Z" fill="#E78132"/>
+  <ellipse cx="100" cy="120" rx="26" ry="26" fill="#FFFDF7"/>
+  <text x="100" y="130" font-size="26" text-anchor="middle" fill="#E78132" font-weight="700" font-family="IBM Plex Sans Thai, sans-serif">฿</text>
+  <ellipse cx="80" cy="98" rx="7" ry="9" fill="#102A3A"/>
+  <ellipse cx="120" cy="98" rx="7" ry="9" fill="#102A3A"/>
+</svg>

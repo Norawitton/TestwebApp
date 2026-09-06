@@ -1,0 +1,18 @@
+{
+  "name": "ออมกัน (AomGun)",
+  "short_name": "ออมกัน",
+  "description": "แอปจัดการรายรับ-รายจ่าย บันทึกสลิป ตั้งงบประมาณ และวิเคราะห์การใช้เงินกับน้องออม",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#FFFDF7",
+  "theme_color": "#FFD64F",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}
