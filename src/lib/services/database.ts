@@ -141,6 +141,64 @@ export async function listAccounts(): Promise<Account[]> {
   return (data ?? []).map(rowToAccount);
 }
 
+export async function createAccount(input: Omit<Account, "id">): Promise<Account> {
+  const userId = await getUserId();
+  const id = uid("acc");
+  const { data, error } = await supabase
+    .from("accounts")
+    .insert({
+      id,
+      user_id: userId,
+      name: input.name,
+      type: input.type,
+      bank: input.bank ?? null,
+      last4: input.last4 ?? null,
+      color_from: input.colorFrom,
+      color_to: input.colorTo,
+    })
+    .select()
+    .single();
+  if (error) throw error;
+  return rowToAccount(data);
+}
+
+export async function updateAccount(
+  id: string,
+  patch: Partial<Omit<Account, "id">>
+): Promise<Account | null> {
+  const userId = await getUserId();
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const rowPatch: Record<string, any> = {};
+  if (patch.name !== undefined) rowPatch.name = patch.name;
+  if (patch.type !== undefined) rowPatch.type = patch.type;
+  if (patch.bank !== undefined) rowPatch.bank = patch.bank;
+  if (patch.last4 !== undefined) rowPatch.last4 = patch.last4;
+  if (patch.colorFrom !== undefined) rowPatch.color_from = patch.colorFrom;
+  if (patch.colorTo !== undefined) rowPatch.color_to = patch.colorTo;
+
+  const { data, error } = await supabase
+    .from("accounts")
+    .update(rowPatch)
+    .eq("id", id)
+    .eq("user_id", userId)
+    .select()
+    .single();
+  if (error) return null;
+  return rowToAccount(data);
+}
+
+// หมายเหตุ: ตั้งชื่อ deleteFinancialAccount เพื่อไม่ให้สับสนกับ deleteAccount()
+// ด้านล่าง ซึ่งหมายถึงการลบ "บัญชีผู้ใช้" (user account) ทั้งหมด ไม่ใช่บัญชีการเงิน
+export async function deleteFinancialAccount(id: string): Promise<boolean> {
+  const userId = await getUserId();
+  const { error } = await supabase
+    .from("accounts")
+    .delete()
+    .eq("id", id)
+    .eq("user_id", userId);
+  return !error;
+}
+
 // ---------------- Budget ----------------
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
