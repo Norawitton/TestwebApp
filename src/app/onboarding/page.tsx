@@ -36,13 +36,27 @@ const SLIDES = [
 export default function OnboardingPage() {
   const router = useRouter();
   const [index, setIndex] = useState(0);
+  const [starting, setStarting] = useState(false);
+  const [startError, setStartError] = useState("");
   const isLast = index === SLIDES.length - 1;
   const slide = SLIDES[index];
   const Illustration = slide.illustration;
 
   async function handleStart() {
-    await updateProfile({ onboarded: true });
-    router.push("/home");
+    if (starting) return;
+    setStarting(true);
+    setStartError("");
+    try {
+      await updateProfile({ onboarded: true });
+      router.push("/home");
+    } catch {
+      // เดิม updateProfile() คืน "สำเร็จ" ปลอมตอน error ทำให้ผู้ใช้เข้าหน้า
+      // /home ได้ในเซสชันนั้น แต่ DB ยังเป็น onboarded: false อยู่ — เปิดแอพ
+      // ใหม่ครั้งหน้า src/app/page.tsx จะเช็คแล้วเด้งกลับมา /onboarding อีก
+      // โดยไม่มีคำอธิบาย เช็ค error แล้วให้ลองใหม่แทน
+      setStartError("เริ่มต้นใช้งานไม่สำเร็จ ลองใหม่อีกครั้ง");
+      setStarting(false);
+    }
   }
 
   return (
@@ -78,15 +92,18 @@ export default function OnboardingPage() {
           ))}
         </div>
 
+        {startError && <p className="text-xs font-semibold text-ag-coral">{startError}</p>}
+
         {isLast ? (
-          <Button variant="navy" size="lg" fullWidth onClick={handleStart}>
-            เริ่มต้นใช้งาน
+          <Button variant="navy" size="lg" fullWidth onClick={handleStart} disabled={starting}>
+            {starting ? "กำลังเริ่มต้น..." : "เริ่มต้นใช้งาน"}
           </Button>
         ) : (
           <div className="flex w-full gap-3">
             <button
               onClick={handleStart}
-              className="h-14 flex-1 rounded-2xl text-sm font-bold text-ag-navy/60 active:opacity-60"
+              disabled={starting}
+              className="h-14 flex-1 rounded-2xl text-sm font-bold text-ag-navy/60 active:opacity-60 disabled:opacity-50"
             >
               ข้าม
             </button>

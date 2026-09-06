@@ -202,7 +202,9 @@ export async function updateAccount(
     .eq("user_id", userId)
     .select()
     .single();
-  if (error) return null;
+  // เดิมคืน null เงียบๆ ตอน error — แก้ไว้ล่วงหน้าเผื่อมี UI แก้ไขบัญชีในอนาคต
+  // (ตอนนี้ยังไม่มีตัวเรียกใช้ editAccount() จริง)
+  if (error) throw error;
   return rowToAccount(data);
 }
 
@@ -276,7 +278,7 @@ export async function updateBudget(patch: Partial<Budget>): Promise<Budget> {
   const current = await getBudget();
   const next = { ...current, ...patch };
 
-  await supabase
+  const { error } = await supabase
     .from("budgets")
     .update({
       total_limit: next.totalLimit,
@@ -285,7 +287,10 @@ export async function updateBudget(patch: Partial<Budget>): Promise<Budget> {
     })
     .eq("id", current.id)
     .eq("user_id", userId);
-
+  // เดิมไม่เช็ค error เลย คืนค่า next (ที่คำนวณไว้ในเครื่อง) เสมอไม่ว่าจะ
+  // เขียนลงฐานข้อมูลสำเร็จจริงหรือไม่ — ถ้าล้มเหลว หน้าจอจะโชว์เหมือนบันทึก
+  // งบสำเร็จ แต่พอ refresh ครั้งถัดไปค่าจะเงียบๆ กลับไปเป็นของเดิม
+  if (error) throw error;
   return next;
 }
 
@@ -359,7 +364,9 @@ export async function updateGoal(
     .eq("user_id", userId)
     .select()
     .single();
-  if (error) return null;
+  // เดิมคืน null เงียบๆ ตอน error ทำให้ปุ่ม "+฿500" ดูเหมือนกดไม่ติดตอน
+  // ล้มเหลวจริงๆ โดยไม่มี error ให้เห็นเลย
+  if (error) throw error;
   return rowToGoal(data);
 }
 
@@ -456,13 +463,18 @@ export async function updateProfile(
   if (patch.biometricEnabled !== undefined) rowPatch.biometric_enabled = patch.biometricEnabled;
   if (patch.onboarded !== undefined) rowPatch.onboarded = patch.onboarded;
 
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from("profiles")
     .update(rowPatch)
     .eq("id", userId)
     .select()
     .single();
 
+  // เดิมไม่เช็ค error เลย ถ้าเขียนล้มเหลวจริงๆ จะ fallback ไปดึงโปรไฟล์เดิม
+  // (ที่ยังไม่ได้แก้ไข) มาผสมกับ patch ในเครื่อง แล้วคืนราวกับว่าบันทึกสำเร็จ
+  // — เช่น ตอน onboarding แล้ว updateProfile({onboarded:true}) ล้มเหลว จะยัง
+  // เข้าหน้า /home ได้ในเซสชันนั้น แต่เปิดแอพใหม่จะเด้งกลับ /onboarding อีก
+  if (error) throw error;
   if (data) return rowToProfile(data);
   const current = await getProfile();
   return { ...current, ...patch };

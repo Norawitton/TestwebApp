@@ -28,18 +28,31 @@ import { Mascot } from "@/components/mascot/Mascot";
 export function RequireAuth({ children }: { children: ReactNode }) {
   const router = useRouter();
   const [authed, setAuthed] = useState(false);
+  const [checkError, setCheckError] = useState(false);
+  const [retryKey, setRetryKey] = useState(0);
 
   useEffect(() => {
     let active = true;
 
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (!active) return;
-      if (!session) {
-        router.replace("/login");
-        return; // stay unauthed — splash keeps showing until navigation completes
-      }
-      setAuthed(true);
-    });
+    supabase.auth
+      .getSession()
+      .then(({ data: { session } }) => {
+        if (!active) return;
+        if (!session) {
+          router.replace("/login");
+          return; // stay unauthed — splash keeps showing until navigation completes
+        }
+        setAuthed(true);
+      })
+      .catch((err) => {
+        // เดิมไม่มี .catch() เลย ถ้า getSession() reject (เช่น เน็ตหลุดตอน
+        // ติดต่อ Supabase) จะไม่มี callback ไหนทำงานเลย authed จะไม่มีวันเป็น
+        // true และไม่ redirect ด้วย ผู้ใช้ค้างอยู่หน้า splash วนตลอดไปไม่มี
+        // ทางออกนอกจากรีเฟรชเอง — โชว์ error พร้อมปุ่มลองใหม่แทน
+        console.error("ตรวจสอบสิทธิ์เข้าใช้งานไม่สำเร็จ:", err);
+        if (!active) return;
+        setCheckError(true);
+      });
 
     // เผื่อถูก sign out ระหว่างที่หน้านี้เปิดอยู่ — เช็คเฉพาะ event "SIGNED_OUT"
     // ตรงๆ เท่านั้น (ไม่ใช่แค่ session ว่าง) เพราะ onAuthStateChange ของ
@@ -56,17 +69,41 @@ export function RequireAuth({ children }: { children: ReactNode }) {
       active = false;
       sub.subscription.unsubscribe();
     };
-  }, [router]);
+    // retryKey เปลี่ยนเพื่อสั่งให้ effect รันเช็ค session ใหม่ตอนกด "ลองใหม่"
+  }, [router, retryKey]);
 
+  if (checkError) {
+    return (
+      <AuthSplash
+        error
+        onRetry={() => {
+          setCheckError(false);
+          setRetryKey((k) => k + 1);
+        }}
+      />
+    );
+  }
   if (!authed) return <AuthSplash />;
   return <>{children}</>;
 }
 
-function AuthSplash() {
+function AuthSplash({ error, onRetry }: { error?: boolean; onRetry?: () => void }) {
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center gap-4 bg-ag-offwhite">
-      <Mascot pose="wave" size={90} />
-      <div className="h-8 w-8 animate-spin rounded-full border-4 border-ag-blue border-t-transparent" />
+    <div className="flex min-h-screen flex-col items-center justify-center gap-4 bg-ag-offwhite px-8 text-center">
+      <Mascot pose={error ? "worried" : "wave"} size={90} />
+      {error ? (
+        <>
+          <p className="text-sm text-ag-text-secondary">ตรวจสอบสิทธิ์เข้าใช้งานไม่สำเร็จ ลองตรวจสอบการเชื่อมต่ออินเทอร์เน็ต</p>
+          <button
+            onClick={onRetry}
+            className="rounded-2xl bg-ag-blue px-5 py-2.5 text-sm font-bold text-white active:opacity-80"
+          >
+            ลองใหม่
+          </button>
+        </>
+      ) : (
+        <div className="h-8 w-8 animate-spin rounded-full border-4 border-ag-blue border-t-transparent" />
+      )}
     </div>
   );
 }

@@ -99,8 +99,12 @@ export default function BudgetPage() {
                       setTotalError("กรุณากรอกจำนวนเงินให้ถูกต้อง");
                       return;
                     }
-                    await saveBudget({ totalLimit: parsed });
-                    setEditingTotal(false);
+                    try {
+                      await saveBudget({ totalLimit: parsed });
+                      setEditingTotal(false);
+                    } catch {
+                      setTotalError("บันทึกไม่สำเร็จ ลองใหม่อีกครั้ง");
+                    }
                   }}
                 >
                   บันทึก
@@ -184,8 +188,12 @@ export default function BudgetPage() {
                               const next = budget.categoryLimits.map((c) =>
                                 c.category === cl.category ? { ...c, limit: parsed } : c
                               );
-                              await saveBudget({ categoryLimits: next });
-                              setEditingCategory(null);
+                              try {
+                                await saveBudget({ categoryLimits: next });
+                                setEditingCategory(null);
+                              } catch {
+                                setCategoryError("บันทึกไม่สำเร็จ ลองใหม่อีกครั้ง");
+                              }
                             }}
                             className="text-xs font-bold text-ag-blue"
                           >
@@ -205,7 +213,11 @@ export default function BudgetPage() {
                             {formatBaht(spent)} / {formatBaht(cl.limit)}
                           </button>
                           <button
-                            onClick={() => saveBudget({ categoryLimits: budget.categoryLimits.filter((c) => c.category !== cl.category) })}
+                            onClick={() =>
+                              saveBudget({ categoryLimits: budget.categoryLimits.filter((c) => c.category !== cl.category) }).catch(
+                                (err) => console.error("ลบงบหมวดหมู่ไม่สำเร็จ:", err)
+                              )
+                            }
                             aria-label={`ลบงบ${CATEGORIES[cl.category].label}`}
                             className="text-ag-text-secondary"
                           >
@@ -273,6 +285,8 @@ export default function BudgetPage() {
                       setBumpingGoalId(g.id);
                       try {
                         await editGoal(g.id, { currentAmount: g.currentAmount + 500 });
+                      } catch (err) {
+                        console.error("เพิ่มยอดเป้าหมายไม่สำเร็จ:", err);
                       } finally {
                         setBumpingGoalId(null);
                       }
@@ -403,19 +417,27 @@ function AddCategoryBudgetSheet({
 }: {
   categories: CategoryId[];
   onClose: () => void;
-  onCreate: (input: { category: CategoryId; limit: number }) => void;
+  onCreate: (input: { category: CategoryId; limit: number }) => Promise<void>;
 }) {
   const [category, setCategory] = useState<CategoryId>(categories[0]);
   const [limitInput, setLimitInput] = useState("");
   const [error, setError] = useState("");
+  const [saving, setSaving] = useState(false);
 
-  function handleCreate() {
+  async function handleCreate() {
+    if (saving) return;
     const parsed = parseAmountInput(limitInput);
     if (parsed === null || parsed <= 0) {
       setError("กรุณากรอกวงเงินให้ถูกต้อง");
       return;
     }
-    onCreate({ category, limit: parsed });
+    setSaving(true);
+    try {
+      await onCreate({ category, limit: parsed });
+    } catch {
+      setError("บันทึกไม่สำเร็จ ลองใหม่อีกครั้ง");
+      setSaving(false);
+    }
   }
 
   return (
@@ -458,8 +480,8 @@ function AddCategoryBudgetSheet({
         />
         {error && <p className="mb-3 text-xs font-semibold text-ag-coral">{error}</p>}
 
-        <Button variant="primary" size="lg" fullWidth onClick={handleCreate} className="mt-3">
-          เพิ่มงบประมาณ
+        <Button variant="primary" size="lg" fullWidth onClick={handleCreate} disabled={saving} className="mt-3">
+          {saving ? "กำลังบันทึก..." : "เพิ่มงบประมาณ"}
         </Button>
       </div>
     </div>

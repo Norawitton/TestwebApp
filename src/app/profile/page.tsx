@@ -127,7 +127,9 @@ export default function ProfilePage() {
               trailing={
                 <Toggle
                   checked={profile.biometricEnabled}
-                  onChange={(v) => saveProfile({ biometricEnabled: v })}
+                  onChange={(v) =>
+                    saveProfile({ biometricEnabled: v }).catch((err) => console.error("บันทึกการตั้งค่าไม่สำเร็จ:", err))
+                  }
                 />
               }
             />
@@ -227,8 +229,9 @@ export default function ProfilePage() {
             <Mascot pose="worried" size={72} />
             <h3 className="mt-3 text-lg font-bold text-ag-text">ยืนยันการลบบัญชีผู้ใช้?</h3>
             <p className="mt-1 text-sm text-ag-text-secondary">
-              ข้อมูลทั้งหมดของคุณ (รายการ, บัญชี, งบประมาณ, เป้าหมาย) รวมถึงตัวบัญชีผู้ใช้เองจะถูกลบถาวร
-              และคุณจะถูกออกจากระบบทันที — กู้คืนไม่ได้
+              ข้อมูลทั้งหมดของคุณ (รายการ, บัญชี, งบประมาณ, เป้าหมาย, โปรไฟล์) จะถูกลบถาวรและกู้คืนไม่ได้
+              จากนั้นจะออกจากระบบทันที — หมายเหตุ: อีเมลนี้จะยังใช้เข้าสู่ระบบใหม่ได้อยู่
+              (ระบบจะสร้างบัญชีใหม่ให้อัตโนมัติ ไม่ใช่การปิดอีเมลถาวร)
             </p>
             <div className="mt-5 flex gap-3">
               <button
