@@ -6,7 +6,7 @@ import { ScreenHeader } from "@/components/ui/ScreenHeader";
 import { Button } from "@/components/ui/Button";
 import { CategoryIcon } from "@/components/ui/CategoryIcon";
 import { useAppData } from "@/hooks/useAppData";
-import { CategoryId, TransactionType } from "@/lib/types";
+import { CategoryId, Transaction, TransactionType } from "@/lib/types";
 import { CATEGORIES, EXPENSE_CATEGORY_LIST, INCOME_CATEGORY_LIST } from "@/lib/categories";
 import { clsx } from "clsx";
 import { Mascot } from "@/components/mascot/Mascot";
@@ -31,6 +31,9 @@ interface TransactionFormProps {
   title: string;
   defaultAccountId?: string;
   restrictToAccountType?: "credit_card";
+  // ถ้าใส่มา ฟอร์มจะพรีฟิลค่าจากรายการนี้และแก้ไข (editTransaction) แทนที่จะ
+  // สร้างรายการใหม่ (addTransaction) ตอนกดบันทึก
+  existing?: Transaction;
 }
 
 interface FormErrors {
@@ -40,16 +43,18 @@ interface FormErrors {
   account?: string;
 }
 
-export function TransactionForm({ type, title, restrictToAccountType }: TransactionFormProps) {
+export function TransactionForm({ type, title, restrictToAccountType, existing }: TransactionFormProps) {
   const router = useRouter();
-  const { accounts, addTransaction } = useAppData();
-  const [amount, setAmount] = useState("");
-  const [merchant, setMerchant] = useState("");
-  const [category, setCategory] = useState<CategoryId>(type === "income" ? "salary" : "food");
-  const [accountId, setAccountId] = useState<string>("");
-  const [dateStr, setDateStr] = useState(() => toDateInputValue(new Date()));
-  const [pending, setPending] = useState(false);
-  const [note, setNote] = useState("");
+  const { accounts, addTransaction, editTransaction } = useAppData();
+  const [amount, setAmount] = useState(() => (existing ? String(existing.amount) : ""));
+  const [merchant, setMerchant] = useState(() => existing?.merchant ?? "");
+  const [category, setCategory] = useState<CategoryId>(
+    () => existing?.category ?? (type === "income" ? "salary" : "food")
+  );
+  const [accountId, setAccountId] = useState<string>(() => existing?.accountId ?? "");
+  const [dateStr, setDateStr] = useState(() => toDateInputValue(existing ? new Date(existing.date) : new Date()));
+  const [pending, setPending] = useState(() => existing?.status === "pending");
+  const [note, setNote] = useState(() => existing?.note ?? "");
   const [errors, setErrors] = useState<FormErrors>({});
   const [saving, setSaving] = useState(false);
   const [success, setSuccess] = useState(false);
@@ -82,27 +87,45 @@ export function TransactionForm({ type, title, restrictToAccountType }: Transact
     if (!validate()) return;
     setSaving(true);
     const numeric = Number(amount.replace(/,/g, ""));
-    await addTransaction({
-      type,
-      amount: numeric,
-      merchant: merchant.trim(),
-      category,
-      accountId,
-      date: combineDateWithNow(dateStr),
-      note: note.trim() || undefined,
-      source: restrictToAccountType === "credit_card" ? "credit_card" : "manual",
-      status: pending ? "pending" : "completed",
-    });
+    const status = pending ? "pending" : "completed";
+    if (existing) {
+      await editTransaction(existing.id, {
+        amount: numeric,
+        merchant: merchant.trim(),
+        category,
+        accountId,
+        date: combineDateWithNow(dateStr),
+        // ส่งเป็น "" แทน undefined ตอนแก้ไข เพราะ updateTransaction() จะข้าม
+        // field ที่เป็น undefined ไปเลย (ถือว่า "ไม่แตะ") — ถ้าผู้ใช้ลบโน้ต
+        // ทิ้งแล้วส่ง undefined ไป โน้ตเดิมจะไม่ถูกล้างออกจริง
+        note: note.trim(),
+        status,
+      });
+    } else {
+      await addTransaction({
+        type,
+        amount: numeric,
+        merchant: merchant.trim(),
+        category,
+        accountId,
+        date: combineDateWithNow(dateStr),
+        note: note.trim() || undefined,
+        source: restrictToAccountType === "credit_card" ? "credit_card" : "manual",
+        status,
+      });
+    }
     setSaving(false);
     setSuccess(true);
-    setTimeout(() => router.push("/home"), 900);
+    setTimeout(() => router.push(existing ? "/history" : "/home"), 900);
   }
 
   if (success) {
     return (
       <div className="flex min-h-screen flex-col items-center justify-center gap-4 bg-ag-yellow-soft px-8 text-center">
         <Mascot pose="cheer" size={110} />
-        <h2 className="text-xl font-bold text-ag-navy">บันทึกรายการเรียบร้อย!</h2>
+        <h2 className="text-xl font-bold text-ag-navy">
+          {existing ? "แก้ไขรายการเรียบร้อย!" : "บันทึกรายการเรียบร้อย!"}
+        </h2>
         <p className="text-sm text-ag-text/70">น้องออมบันทึกรายการของคุณให้แล้วครับ</p>
       </div>
     );
@@ -239,7 +262,7 @@ export function TransactionForm({ type, title, restrictToAccountType }: Transact
         </label>
 
         <Button variant="primary" size="lg" fullWidth onClick={handleSubmit} disabled={saving}>
-          {saving ? "กำลังบันทึก..." : "บันทึกรายการ"}
+          {saving ? "กำลังบันทึก..." : existing ? "บันทึกการแก้ไข" : "บันทึกรายการ"}
         </Button>
       </div>
     </div>

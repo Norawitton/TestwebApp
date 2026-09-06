@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import { Search, SlidersHorizontal, Trash2, Pencil, Check } from "lucide-react";
 import { AppShell } from "@/components/nav/AppShell";
 import { ScreenHeader } from "@/components/ui/ScreenHeader";
@@ -204,6 +205,7 @@ function SwipeableRow({
   onDelete: () => void;
   onConfirm: () => void;
 }) {
+  const router = useRouter();
   const isIncome = tx.type === "income";
   const isPending = tx.status === "pending";
   return (
@@ -219,6 +221,7 @@ function SwipeableRow({
           </button>
         )}
         <button
+          onClick={() => router.push(`/history/edit/${tx.id}`)}
           aria-label="แก้ไข"
           className="flex h-full items-center justify-center rounded-xl bg-ag-blue px-4"
         >
