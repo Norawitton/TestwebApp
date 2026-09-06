@@ -1,45 +1,36 @@
-// Auth service layer.
-//
-// Prototype implementation keeps a fake session flag in localStorage.
-// Swap this file's internals for Supabase Auth / Firebase Auth later;
-// callers (hooks/screens) only depend on the exported function signatures.
-
-const SESSION_KEY = "aomgun.session";
+// Auth service — Supabase Auth
+import { supabase } from "@/lib/supabase";
 
 export interface Session {
   userId: string;
   pinVerified: boolean;
 }
 
-function isBrowser() {
-  return typeof window !== "undefined";
-}
-
 export async function getSession(): Promise<Session | null> {
-  if (!isBrowser()) return null;
-  const raw = window.localStorage.getItem(SESSION_KEY);
-  if (!raw) return null;
-  try {
-    return JSON.parse(raw) as Session;
-  } catch {
-    return null;
-  }
+  const { data: { session } } = await supabase.auth.getSession();
+  if (!session) return null;
+  return { userId: session.user.id, pinVerified: true };
 }
 
-export async function signInMock(): Promise<Session> {
-  const session: Session = { userId: "user-1", pinVerified: true };
-  if (isBrowser()) {
-    window.localStorage.setItem(SESSION_KEY, JSON.stringify(session));
-  }
-  return session;
+export async function signIn(email: string, password: string): Promise<Session> {
+  const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+  if (error) throw new Error(error.message);
+  return { userId: data.user.id, pinVerified: true };
+}
+
+export async function signUp(email: string, password: string): Promise<Session> {
+  const { data, error } = await supabase.auth.signUp({ email, password });
+  if (error) throw new Error(error.message);
+  if (!data.user) throw new Error("ไม่สามารถสมัครสมาชิกได้");
+  if (!data.session) throw new Error("กรุณาตรวจสอบอีเมลเพื่อยืนยันบัญชี แล้วลองเข้าสู่ระบบใหม่");
+  return { userId: data.user.id, pinVerified: true };
+}
+
+export async function signOut(): Promise<void> {
+  await supabase.auth.signOut();
 }
 
 export async function verifyPin(pin: string): Promise<boolean> {
-  // Prototype: any 6-digit PIN is accepted.
   await new Promise((r) => setTimeout(r, 300));
   return /^\d{6}$/.test(pin);
-}
-
-export async function signOutMock(): Promise<void> {
-  if (isBrowser()) window.localStorage.removeItem(SESSION_KEY);
 }

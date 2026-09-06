@@ -2,6 +2,7 @@
 
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { getSession } from "@/lib/services/auth";
 import { getProfile } from "@/lib/services/database";
 import { Mascot } from "@/components/mascot/Mascot";
 
@@ -10,6 +11,11 @@ export default function RootPage() {
 
   useEffect(() => {
     (async () => {
+      const session = await getSession();
+      if (!session) {
+        router.replace("/login");
+        return;
+      }
       const profile = await getProfile();
       router.replace(profile.onboarded ? "/home" : "/onboarding");
     })();

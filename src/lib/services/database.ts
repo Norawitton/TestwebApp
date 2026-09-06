@@ -1,11 +1,8 @@
-// Database service layer.
-//
-// This module is the ONLY place that talks to storage. Every screen/hook
-// calls these functions instead of touching localStorage directly, so that
-// swapping the prototype's localStorage backend for Supabase or Firebase
-// later only requires rewriting this one file (same function signatures,
-// return Promises already so callers don't need to change).
+// Database service layer — Supabase backend
+// Function signatures match the localStorage prototype so no consuming
+// component needs to change.
 
+import { supabase } from "@/lib/supabase";
 import {
   Account,
   Budget,
@@ -13,183 +10,377 @@ import {
   Transaction,
   UserProfile,
 } from "@/lib/types";
-import {
-  SEED_ACCOUNTS,
-  SEED_BUDGET,
-  SEED_GOALS,
-  SEED_PROFILE,
-  SEED_TRANSACTIONS,
-} from "@/lib/mockData";
 
-const KEYS = {
-  transactions: "aomgun.transactions",
-  accounts: "aomgun.accounts",
-  budget: "aomgun.budget",
-  goals: "aomgun.goals",
-  profile: "aomgun.profile",
-  seeded: "aomgun.seeded",
-} as const;
-
-function isBrowser() {
-  return typeof window !== "undefined";
-}
-
-function read<T>(key: string, fallback: T): T {
-  if (!isBrowser()) return fallback;
-  try {
-    const raw = window.localStorage.getItem(key);
-    if (!raw) return fallback;
-    return JSON.parse(raw) as T;
-  } catch {
-    return fallback;
-  }
-}
-
-function write<T>(key: string, value: T): void {
-  if (!isBrowser()) return;
-  window.localStorage.setItem(key, JSON.stringify(value));
-}
-
-function ensureSeeded(): void {
-  if (!isBrowser()) return;
-  if (window.localStorage.getItem(KEYS.seeded)) return;
-  write(KEYS.transactions, SEED_TRANSACTIONS);
-  write(KEYS.accounts, SEED_ACCOUNTS);
-  write(KEYS.budget, SEED_BUDGET);
-  write(KEYS.goals, SEED_GOALS);
-  write(KEYS.profile, SEED_PROFILE);
-  window.localStorage.setItem(KEYS.seeded, "1");
+async function getUserId(): Promise<string> {
+  const { data: { session } } = await supabase.auth.getSession();
+  if (!session) throw new Error("ไม่ได้เข้าสู่ระบบ");
+  return session.user.id;
 }
 
 function uid(prefix: string): string {
   return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 }
 
-// Simulate network latency so loading states are exercised, same shape
-// a real async backend call would have.
-function delay<T>(value: T, ms = 250): Promise<T> {
-  return new Promise((resolve) => setTimeout(() => resolve(value), ms));
-}
-
 // ---------------- Transactions ----------------
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function rowToTransaction(row: any): Transaction {
+  return {
+    id: row.id,
+    type: row.type,
+    amount: row.amount,
+    merchant: row.merchant,
+    category: row.category,
+    accountId: row.account_id,
+    date: row.date,
+    note: row.note ?? undefined,
+    source: row.source,
+    bank: row.bank ?? undefined,
+    createdAt: row.created_at,
+  };
+}
+
 export async function listTransactions(): Promise<Transaction[]> {
-  ensureSeeded();
-  const items = read<Transaction[]>(KEYS.transactions, []);
-  return delay(
-    [...items].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
-  );
+  const userId = await getUserId();
+  const { data, error } = await supabase
+    .from("transactions")
+    .select("*")
+    .eq("user_id", userId)
+    .order("date", { ascending: false });
+  if (error) throw error;
+  return (data ?? []).map(rowToTransaction);
 }
 
 export async function createTransaction(
   input: Omit<Transaction, "id" | "createdAt">
 ): Promise<Transaction> {
-  ensureSeeded();
-  const items = read<Transaction[]>(KEYS.transactions, []);
-  const tx: Transaction = {
-    ...input,
-    id: uid("tx"),
-    createdAt: new Date().toISOString(),
-  };
-  write(KEYS.transactions, [tx, ...items]);
-  return delay(tx, 150);
+  const userId = await getUserId();
+  const id = uid("tx");
+  const { data, error } = await supabase
+    .from("transactions")
+    .insert({
+      id,
+      user_id: userId,
+      type: input.type,
+      amount: input.amount,
+      merchant: input.merchant,
+      category: input.category,
+      account_id: input.accountId,
+      date: input.date,
+      note: input.note,
+      source: input.source,
+      bank: input.bank,
+    })
+    .select()
+    .single();
+  if (error) throw error;
+  return rowToTransaction(data);
 }
 
 export async function updateTransaction(
   id: string,
   patch: Partial<Transaction>
 ): Promise<Transaction | null> {
-  ensureSeeded();
-  const items = read<Transaction[]>(KEYS.transactions, []);
-  const idx = items.findIndex((t) => t.id === id);
-  if (idx === -1) return delay(null, 100);
-  items[idx] = { ...items[idx], ...patch };
-  write(KEYS.transactions, items);
-  return delay(items[idx], 150);
+  const userId = await getUserId();
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const rowPatch: Record<string, any> = {};
+  if (patch.type !== undefined) rowPatch.type = patch.type;
+  if (patch.amount !== undefined) rowPatch.amount = patch.amount;
+  if (patch.merchant !== undefined) rowPatch.merchant = patch.merchant;
+  if (patch.category !== undefined) rowPatch.category = patch.category;
+  if (patch.accountId !== undefined) rowPatch.account_id = patch.accountId;
+  if (patch.date !== undefined) rowPatch.date = patch.date;
+  if (patch.note !== undefined) rowPatch.note = patch.note;
+  if (patch.source !== undefined) rowPatch.source = patch.source;
+  if (patch.bank !== undefined) rowPatch.bank = patch.bank;
+
+  const { data, error } = await supabase
+    .from("transactions")
+    .update(rowPatch)
+    .eq("id", id)
+    .eq("user_id", userId)
+    .select()
+    .single();
+  if (error) return null;
+  return rowToTransaction(data);
 }
 
 export async function deleteTransaction(id: string): Promise<boolean> {
-  ensureSeeded();
-  const items = read<Transaction[]>(KEYS.transactions, []);
-  const next = items.filter((t) => t.id !== id);
-  write(KEYS.transactions, next);
-  return delay(true, 120);
+  const userId = await getUserId();
+  const { error } = await supabase
+    .from("transactions")
+    .delete()
+    .eq("id", id)
+    .eq("user_id", userId);
+  return !error;
 }
 
 // ---------------- Accounts ----------------
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function rowToAccount(row: any): Account {
+  return {
+    id: row.id,
+    name: row.name,
+    type: row.type,
+    bank: row.bank ?? undefined,
+    last4: row.last4 ?? undefined,
+    colorFrom: row.color_from,
+    colorTo: row.color_to,
+  };
+}
+
 export async function listAccounts(): Promise<Account[]> {
-  ensureSeeded();
-  return delay(read<Account[]>(KEYS.accounts, []));
+  const userId = await getUserId();
+  const { data, error } = await supabase
+    .from("accounts")
+    .select("*")
+    .eq("user_id", userId)
+    .order("created_at", { ascending: true });
+  if (error) throw error;
+  return (data ?? []).map(rowToAccount);
 }
 
 // ---------------- Budget ----------------
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function rowToBudget(row: any): Budget {
+  return {
+    id: row.id,
+    month: row.month,
+    totalLimit: row.total_limit,
+    categoryLimits: row.category_limits ?? [],
+    alertThresholds: row.alert_thresholds ?? [0.7, 0.9, 1.0],
+  };
+}
+
 export async function getBudget(): Promise<Budget> {
-  ensureSeeded();
-  return delay(read<Budget>(KEYS.budget, SEED_BUDGET));
+  const userId = await getUserId();
+  const month = new Date().toISOString().slice(0, 7);
+
+  const { data } = await supabase
+    .from("budgets")
+    .select("*")
+    .eq("user_id", userId)
+    .eq("month", month)
+    .single();
+
+  if (data) return rowToBudget(data);
+
+  // สร้าง budget ว่างสำหรับเดือนนี้
+  const id = uid("budget");
+  const defaultBudget = {
+    id,
+    user_id: userId,
+    month,
+    total_limit: 30000,
+    category_limits: [],
+    alert_thresholds: [0.7, 0.9, 1.0],
+  };
+  await supabase.from("budgets").insert(defaultBudget);
+  return {
+    id,
+    month,
+    totalLimit: 30000,
+    categoryLimits: [],
+    alertThresholds: [0.7, 0.9, 1.0],
+  };
 }
 
 export async function updateBudget(patch: Partial<Budget>): Promise<Budget> {
-  ensureSeeded();
-  const current = read<Budget>(KEYS.budget, SEED_BUDGET);
+  const userId = await getUserId();
+  const current = await getBudget();
   const next = { ...current, ...patch };
-  write(KEYS.budget, next);
-  return delay(next, 150);
+
+  await supabase
+    .from("budgets")
+    .update({
+      total_limit: next.totalLimit,
+      category_limits: next.categoryLimits,
+      alert_thresholds: next.alertThresholds,
+    })
+    .eq("id", current.id)
+    .eq("user_id", userId);
+
+  return next;
 }
 
-// ---------------- Saving goals ----------------
+// ---------------- Saving Goals ----------------
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function rowToGoal(row: any): SavingGoal {
+  return {
+    id: row.id,
+    name: row.name,
+    targetAmount: row.target_amount,
+    currentAmount: row.current_amount,
+    deadline: row.deadline ?? undefined,
+    emoji: row.emoji,
+    color: row.color,
+  };
+}
 
 export async function listGoals(): Promise<SavingGoal[]> {
-  ensureSeeded();
-  return delay(read<SavingGoal[]>(KEYS.goals, []));
+  const userId = await getUserId();
+  const { data, error } = await supabase
+    .from("saving_goals")
+    .select("*")
+    .eq("user_id", userId)
+    .order("created_at", { ascending: true });
+  if (error) throw error;
+  return (data ?? []).map(rowToGoal);
 }
 
 export async function createGoal(
   input: Omit<SavingGoal, "id">
 ): Promise<SavingGoal> {
-  ensureSeeded();
-  const items = read<SavingGoal[]>(KEYS.goals, []);
-  const goal: SavingGoal = { ...input, id: uid("goal") };
-  write(KEYS.goals, [...items, goal]);
-  return delay(goal, 150);
+  const userId = await getUserId();
+  const id = uid("goal");
+  const { data, error } = await supabase
+    .from("saving_goals")
+    .insert({
+      id,
+      user_id: userId,
+      name: input.name,
+      target_amount: input.targetAmount,
+      current_amount: input.currentAmount,
+      deadline: input.deadline,
+      emoji: input.emoji,
+      color: input.color,
+    })
+    .select()
+    .single();
+  if (error) throw error;
+  return rowToGoal(data);
 }
 
 export async function updateGoal(
   id: string,
   patch: Partial<SavingGoal>
 ): Promise<SavingGoal | null> {
-  ensureSeeded();
-  const items = read<SavingGoal[]>(KEYS.goals, []);
-  const idx = items.findIndex((g) => g.id === id);
-  if (idx === -1) return delay(null, 100);
-  items[idx] = { ...items[idx], ...patch };
-  write(KEYS.goals, items);
-  return delay(items[idx], 150);
+  const userId = await getUserId();
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const rowPatch: Record<string, any> = {};
+  if (patch.name !== undefined) rowPatch.name = patch.name;
+  if (patch.targetAmount !== undefined) rowPatch.target_amount = patch.targetAmount;
+  if (patch.currentAmount !== undefined) rowPatch.current_amount = patch.currentAmount;
+  if (patch.deadline !== undefined) rowPatch.deadline = patch.deadline;
+  if (patch.emoji !== undefined) rowPatch.emoji = patch.emoji;
+  if (patch.color !== undefined) rowPatch.color = patch.color;
+
+  const { data, error } = await supabase
+    .from("saving_goals")
+    .update(rowPatch)
+    .eq("id", id)
+    .eq("user_id", userId)
+    .select()
+    .single();
+  if (error) return null;
+  return rowToGoal(data);
 }
 
 export async function deleteGoal(id: string): Promise<boolean> {
-  ensureSeeded();
-  const items = read<SavingGoal[]>(KEYS.goals, []);
-  write(KEYS.goals, items.filter((g) => g.id !== id));
-  return delay(true, 100);
+  const userId = await getUserId();
+  const { error } = await supabase
+    .from("saving_goals")
+    .delete()
+    .eq("id", id)
+    .eq("user_id", userId);
+  return !error;
 }
 
 // ---------------- Profile ----------------
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function rowToProfile(row: any): UserProfile {
+  return {
+    id: row.id,
+    name: row.name,
+    email: row.email ?? undefined,
+    phone: row.phone ?? undefined,
+    avatarEmoji: row.avatar_emoji,
+    pinEnabled: row.pin_enabled,
+    biometricEnabled: row.biometric_enabled,
+    currency: row.currency,
+    locale: row.locale,
+    onboarded: row.onboarded,
+  };
+}
+
 export async function getProfile(): Promise<UserProfile> {
-  ensureSeeded();
-  return delay(read<UserProfile>(KEYS.profile, SEED_PROFILE));
+  const userId = await getUserId();
+  const { data: { session } } = await supabase.auth.getSession();
+  const email = session?.user?.email;
+
+  const { data } = await supabase
+    .from("profiles")
+    .select("*")
+    .eq("id", userId)
+    .single();
+
+  if (data) return rowToProfile(data);
+
+  // สร้าง profile ใหม่สำหรับผู้ใช้ที่ลงทะเบียนครั้งแรก
+  const newProfile = {
+    id: userId,
+    name: email?.split("@")[0] ?? "ผู้ใช้ใหม่",
+    email: email,
+    avatar_emoji: "😊",
+    pin_enabled: false,
+    biometric_enabled: false,
+    currency: "THB",
+    locale: "th",
+    onboarded: false,
+  };
+  await supabase.from("profiles").insert(newProfile);
+
+  // สร้างบัญชีเงินสดเริ่มต้น
+  await supabase.from("accounts").insert({
+    id: uid("acc"),
+    user_id: userId,
+    name: "เงินสด",
+    type: "cash",
+    color_from: "#FFD64F",
+    color_to: "#E78132",
+  });
+
+  return {
+    id: userId,
+    name: newProfile.name,
+    email: email,
+    avatarEmoji: "😊",
+    pinEnabled: false,
+    biometricEnabled: false,
+    currency: "THB",
+    locale: "th",
+    onboarded: false,
+  };
 }
 
 export async function updateProfile(
   patch: Partial<UserProfile>
 ): Promise<UserProfile> {
-  ensureSeeded();
-  const current = read<UserProfile>(KEYS.profile, SEED_PROFILE);
-  const next = { ...current, ...patch };
-  write(KEYS.profile, next);
-  return delay(next, 150);
+  const userId = await getUserId();
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const rowPatch: Record<string, any> = {};
+  if (patch.name !== undefined) rowPatch.name = patch.name;
+  if (patch.email !== undefined) rowPatch.email = patch.email;
+  if (patch.phone !== undefined) rowPatch.phone = patch.phone;
+  if (patch.avatarEmoji !== undefined) rowPatch.avatar_emoji = patch.avatarEmoji;
+  if (patch.pinEnabled !== undefined) rowPatch.pin_enabled = patch.pinEnabled;
+  if (patch.biometricEnabled !== undefined) rowPatch.biometric_enabled = patch.biometricEnabled;
+  if (patch.onboarded !== undefined) rowPatch.onboarded = patch.onboarded;
+
+  const { data } = await supabase
+    .from("profiles")
+    .update(rowPatch)
+    .eq("id", userId)
+    .select()
+    .single();
+
+  if (data) return rowToProfile(data);
+  const current = await getProfile();
+  return { ...current, ...patch };
 }
 
 // ---------------- Data management ----------------
@@ -208,21 +399,26 @@ export async function exportTransactionsCsv(): Promise<string> {
   const csv = [header, ...rows]
     .map((row) => row.map((cell) => `"${String(cell).replace(/"/g, '""')}"`).join(","))
     .join("\n");
-  return "\uFEFF" + csv; // BOM so Excel opens Thai text correctly
+  return "﻿" + csv;
 }
 
 export async function resetAllData(): Promise<void> {
-  if (!isBrowser()) return;
-  // ลบข้อมูลทั้งหมด
-  Object.values(KEYS).forEach((k) => window.localStorage.removeItem(k));
-  // ตั้ง seeded = "1" ทันที เพื่อกัน ensureSeeded() นำ mock data กลับมา
-  window.localStorage.setItem(KEYS.seeded, "1");
-  // เริ่มต้นด้วย collections ว่างเปล่า
-  write(KEYS.transactions, []);
-  write(KEYS.accounts, []);
-  write(KEYS.goals, []);
+  const userId = await getUserId();
+  await Promise.all([
+    supabase.from("transactions").delete().eq("user_id", userId),
+    supabase.from("saving_goals").delete().eq("user_id", userId),
+    supabase.from("budgets").delete().eq("user_id", userId),
+  ]);
 }
 
 export async function deleteAccount(): Promise<void> {
-  return resetAllData();
+  const userId = await getUserId();
+  await Promise.all([
+    supabase.from("transactions").delete().eq("user_id", userId),
+    supabase.from("accounts").delete().eq("user_id", userId),
+    supabase.from("saving_goals").delete().eq("user_id", userId),
+    supabase.from("budgets").delete().eq("user_id", userId),
+    supabase.from("profiles").delete().eq("id", userId),
+  ]);
+  await supabase.auth.signOut();
 }

@@ -6,6 +6,7 @@ import { Card } from "@/components/ui/Card";
 import { Mascot } from "@/components/mascot/Mascot";
 import { useAppData } from "@/hooks/useAppData";
 import { exportTransactionsCsv, resetAllData, deleteAccount } from "@/lib/services/database";
+import { signOut } from "@/lib/services/auth";
 import {
   CreditCard,
   Bell,
@@ -44,9 +45,14 @@ export default function ProfilePage() {
     router.push("/onboarding");
   }
 
+  async function handleLogout() {
+    await signOut();
+    router.push("/login");
+  }
+
   async function handleDeleteAccount() {
     await deleteAccount();
-    router.push("/onboarding");
+    router.push("/login");
   }
 
   if (!profile) return null;
@@ -130,6 +136,17 @@ export default function ProfilePage() {
           </Card>
         </div>
 
+        {/* Logout */}
+        <Card padded={false}>
+          <button
+            onClick={handleLogout}
+            className="flex w-full items-center gap-3 px-4 py-3.5 text-left active:bg-ag-grayblue/40"
+          >
+            <LogOut size={18} color="#1689F5" />
+            <span className="flex-1 text-sm font-semibold text-ag-blue">ออกจากระบบ</span>
+          </button>
+        </Card>
+
         {/* Danger zone */}
         <div>
           <h2 className="mb-2 font-bold text-ag-coral">โซนอันตราย</h2>
@@ -145,7 +162,7 @@ export default function ProfilePage() {
               onClick={handleDeleteAccount}
               className="flex w-full items-center gap-3 px-4 py-3.5 text-left active:bg-ag-grayblue/40"
             >
-              <LogOut size={18} color="#F36B5F" />
+              <Trash2 size={18} color="#F36B5F" />
               <span className="flex-1 text-sm font-semibold text-ag-coral">ลบบัญชีผู้ใช้</span>
             </button>
           </Card>
