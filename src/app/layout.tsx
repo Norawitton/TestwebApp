@@ -5,6 +5,15 @@ export const metadata: Metadata = {
   title: "ออมกัน (AomGun) — จดง่าย ออมได้จริง",
   description: "แอปจัดการรายรับ-รายจ่าย ตั้งงบประมาณ และวิเคราะห์การใช้เงินกับน้องออม",
   manifest: "/manifest.json",
+  icons: {
+    icon: "/icon.svg",
+    apple: "/apple-touch-icon.png",
+  },
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "default",
+    title: "ออมกัน",
+  },
 };
 
 export const viewport: Viewport = {
