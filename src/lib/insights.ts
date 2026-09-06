@@ -11,6 +11,16 @@ import {
 import { formatBaht } from "./format";
 
 export function buildHomeInsight(transactions: Transaction[], budget: Budget | null): MascotTip {
+  // ผู้ใช้ใหม่ที่ยังไม่เคยจดรายการเลย — ไม่ควรเจอข้อความ/เปอร์เซ็นต์งบที่อิงข้อมูล
+  // ที่ยังไม่มี ให้ทักทายแบบชวนเริ่มต้นแทน
+  if (transactions.length === 0) {
+    return {
+      id: "insight-new-user",
+      tone: "encourage",
+      message: "เริ่มจดรายการแรก แล้วน้องออมจะช่วยสรุปให้เองครับ",
+    };
+  }
+
   const curMonth = currentMonthKey();
   const prevMonth = previousMonthKey();
   const curTx = filterByMonth(transactions, curMonth);

@@ -5,17 +5,18 @@ import { useRouter } from "next/navigation";
 import { clsx } from "clsx";
 import { Button } from "@/components/ui/Button";
 import {
-  IllustrationSlipCapture,
+  IllustrationQuickEntry,
   IllustrationSpendingClarity,
   IllustrationPlanSave,
 } from "@/components/illustrations/Illustrations";
 import { updateProfile } from "@/lib/services/database";
+import { RequireAuth } from "@/components/auth/RequireAuth";
 
 const SLIDES = [
   {
-    title: "จ่ายแล้ว ไม่ต้องกลัวลืมจด",
-    body: "ถ่ายรูปสลิปแล้วให้น้องออมช่วยอ่านและบันทึกให้อัตโนมัติ ไม่ต้องพิมพ์เองทีละบรรทัด",
-    illustration: IllustrationSlipCapture,
+    title: "จดรายรับรายจ่ายได้ในไม่กี่วินาที",
+    body: "กดปุ่ม + เลือกหมวดหมู่ที่ต้องการ ใส่จำนวนเงิน แค่นี้ก็บันทึกเสร็จ ไม่ต้องพิมพ์ยาวๆ",
+    illustration: IllustrationQuickEntry,
     bg: "#FFED9A",
   },
   {
@@ -45,6 +46,7 @@ export default function OnboardingPage() {
   }
 
   return (
+    <RequireAuth>
     <div
       className="flex min-h-screen flex-col transition-colors duration-500"
       style={{ backgroundColor: slide.bg }}
@@ -95,5 +97,6 @@ export default function OnboardingPage() {
         )}
       </div>
     </div>
+    </RequireAuth>
   );
 }

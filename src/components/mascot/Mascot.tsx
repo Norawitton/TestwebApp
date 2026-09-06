@@ -8,7 +8,9 @@ export type MascotPose =
   | "coin"
   | "worried"
   | "cheer"
-  | "peek";
+  | "peek"
+  // ยังไม่มีข้อมูล — มองหาของในชามเปล่า ใช้กับ empty state ต่างๆ
+  | "empty";
 
 interface MascotProps {
   pose?: MascotPose;
@@ -140,6 +142,13 @@ export function Mascot({ pose = "wave", size = 120, className = "", animate = tr
       )}
       {pose === "peek" && (
         <path d="M64 132 Q50 122 54 108" stroke="url(#ag-fur)" strokeWidth="15" strokeLinecap="round" fill="none" />
+      )}
+      {pose === "empty" && (
+        <>
+          <path d="M138 128 Q154 140 148 154" stroke="url(#ag-fur)" strokeWidth="15" strokeLinecap="round" fill="none" />
+          {/* looking down into an empty, dashed-outline bowl */}
+          <ellipse cx="100" cy="174" rx="24" ry="7" fill="none" stroke="#C4CDD6" strokeWidth="3" strokeDasharray="4 5" />
+        </>
       )}
 
       {/* left arm default (rests on body) unless cheer already drew it */}

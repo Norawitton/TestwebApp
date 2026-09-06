@@ -9,6 +9,7 @@ import { useAppData } from "@/hooks/useAppData";
 import { Account } from "@/lib/types";
 import { BANKS } from "@/lib/categories";
 import { AddAccountSheet } from "@/components/accounts/AddAccountSheet";
+import { RequireAuth } from "@/components/auth/RequireAuth";
 import { Plus, Trash2 } from "lucide-react";
 
 const TYPE_LABELS: Record<Account["type"], string> = {
@@ -39,6 +40,7 @@ export default function AccountsPage() {
   }
 
   return (
+    <RequireAuth>
     <div className="mx-auto min-h-screen max-w-[480px] bg-ag-offwhite pb-24">
       <ScreenHeader title="จัดการบัญชีและบัตร" />
 
@@ -161,5 +163,6 @@ export default function AccountsPage() {
         </div>
       )}
     </div>
+    </RequireAuth>
   );
 }

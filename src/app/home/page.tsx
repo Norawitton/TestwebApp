@@ -10,7 +10,6 @@ import { ProgressBar } from "@/components/ui/ProgressBar";
 import { CategoryDonut } from "@/components/charts/CategoryDonut";
 import { MascotTipCard } from "@/components/ui/MascotTipCard";
 import { TransactionRow } from "@/components/transactions/TransactionRow";
-import { IllustrationEmptyState } from "@/components/illustrations/Illustrations";
 import { useAppData } from "@/hooks/useAppData";
 import {
   categoryBreakdownWithPending,
@@ -57,6 +56,8 @@ export default function HomePage() {
   const donutTotal = totalExpense + pendingExpense;
   const recentTx = transactions.slice(0, 6);
   const insight = useMemo(() => buildHomeInsight(transactions, budget), [transactions, budget]);
+  const isNewUser = transactions.length === 0;
+  const hasComparisonData = prevExpense > 0;
 
   if (loading) {
     return (
@@ -68,45 +69,55 @@ export default function HomePage() {
 
   return (
     <AppShell bg="#FFFDF7">
-      {/* Header — navy section */}
+      {/* Header — navy section, with a soft yellow accent behind the greeting */}
       <div className="rounded-b-[28px] bg-ag-navy px-5 pb-8 pt-6 text-white">
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between gap-3">
           <div>
-            <p className="text-sm text-white/70">{greetingByHour()}</p>
-            <h1 className="mt-0.5 text-lg font-bold">วันนี้ใช้เงินเป็นอย่างไรบ้าง?</h1>
+            <span className="inline-block rounded-full bg-ag-yellow px-3 py-1 text-sm font-bold text-ag-navy">
+              {greetingByHour()}
+            </span>
+            <h1 className="mt-2.5 text-lg font-bold leading-snug">วันนี้ใช้เงินเป็นอย่างไรบ้าง?</h1>
           </div>
-          <Mascot pose="wave" size={64} />
+          <div className="shrink-0 rounded-full bg-ag-yellow p-2">
+            <Mascot pose="wave" size={64} />
+          </div>
         </div>
 
-        <button className="mt-5 flex items-center gap-1.5 rounded-full bg-white/10 px-3.5 py-1.5">
+        <button className="mt-6 flex items-center gap-1.5 rounded-full bg-white/10 px-3.5 py-1.5">
           <span className="text-sm font-semibold">{formatThaiMonthYear(monthKey)}</span>
           <ChevronDown size={16} />
         </button>
 
-        <div className="mt-4">
-          <p className="text-sm text-white/70">รายจ่ายเดือนนี้</p>
-          <div className="mt-1 flex items-end justify-between">
+        <div className="mt-5">
+          <p className="text-sm font-medium text-white/80">รายจ่ายเดือนนี้</p>
+          <div className="mt-1.5 flex items-end justify-between gap-2">
             <p className="ag-money text-4xl font-bold">{formatBaht(totalExpense)}</p>
-            <span
-              className={`mb-1 rounded-full px-2.5 py-1 text-xs font-bold ${
-                change > 0 ? "bg-ag-coral/20 text-[#FF9C92]" : "bg-ag-green/20 text-[#5FE0A8]"
-              }`}
-            >
-              {change > 0 ? "+" : ""}
-              {change}% จากเดือนก่อน
-            </span>
+            {hasComparisonData ? (
+              <span
+                className={`ag-money mb-1 rounded-full px-2.5 py-1 text-sm font-bold ${
+                  change > 0 ? "bg-ag-coral/20 text-[#FF9C92]" : "bg-ag-green/20 text-[#5FE0A8]"
+                }`}
+              >
+                {change > 0 ? "+" : ""}
+                {change}% จากเดือนก่อน
+              </span>
+            ) : (
+              <span className="mb-1 rounded-full bg-white/10 px-2.5 py-1 text-sm font-medium text-white/50">
+                ยังไม่มีข้อมูลเปรียบเทียบ
+              </span>
+            )}
           </div>
         </div>
 
-        <div className="mt-5 rounded-2xl bg-white/10 p-4">
+        <div className="mt-6 rounded-2xl bg-white/10 p-4">
           <div className="flex items-center justify-between text-sm">
-            <span className="text-white/80">งบประมาณคงเหลือ</span>
+            <span className="font-medium text-white/85">งบประมาณคงเหลือ</span>
             <span className="ag-money font-bold">{formatBaht(budgetRemaining)}</span>
           </div>
-          <div className="mt-2.5">
+          <div className="mt-3">
             <ProgressBar percent={usedPercent} height={10} trackColor="rgba(255,255,255,0.15)" showThresholds />
           </div>
-          <p className="mt-1.5 text-xs text-white/60">
+          <p className="ag-money mt-2 text-sm font-medium text-white/75">
             ใช้ไปแล้ว {usedPercent}% จากงบ {formatBaht(budgetLimit)}
           </p>
         </div>
@@ -118,8 +129,15 @@ export default function HomePage() {
           <MascotTipCard
             message={insight.message}
             tone={insight.tone}
-            pose={insight.tone === "warning" ? "worried" : insight.tone === "encourage" ? "cheer" : "point"}
-            action={{ label: "ตั้งงบรายสัปดาห์", onClick: () => router.push("/budget") }}
+            pose={isNewUser ? "empty" : insight.tone === "warning" ? "worried" : insight.tone === "encourage" ? "cheer" : "point"}
+            actions={
+              isNewUser
+                ? [
+                    { label: "จดรายการแรก", onClick: () => router.push("/add/expense") },
+                    { label: "ตั้งงบเดือนนี้", onClick: () => router.push("/budget") },
+                  ]
+                : [{ label: "ตั้งงบเดือนนี้", onClick: () => router.push("/budget") }]
+            }
           />
         </div>
 
@@ -127,21 +145,23 @@ export default function HomePage() {
         <Card className="ag-animate-slide-up" style={{ animationDelay: "60ms" }}>
           <div className="mb-3 flex items-center justify-between">
             <h2 className="font-bold text-ag-text">สรุปรายจ่ายตามหมวดหมู่</h2>
-            <button
-              onClick={() => router.push("/analytics")}
-              className="flex items-center text-xs font-semibold text-ag-blue"
-            >
-              ดูทั้งหมด <ChevronRight size={14} />
-            </button>
+            {catBreakdown.length > 0 && (
+              <button
+                onClick={() => router.push("/analytics")}
+                className="flex items-center text-sm font-semibold text-ag-blue"
+              >
+                ดูทั้งหมด <ChevronRight size={14} />
+              </button>
+            )}
           </div>
           {pendingIncome > 0 && (
-            <p className="mb-3 rounded-xl bg-ag-yellow/20 px-3 py-2 text-xs font-semibold text-[#8a6d00]">
+            <p className="mb-3 rounded-xl bg-ag-yellow/20 px-3 py-2 text-sm font-semibold text-[#8a6d00]">
               รายรับรอยืนยันอีก {formatBaht(pendingIncome)}
             </p>
           )}
           {catBreakdown.length === 0 ? (
             <div className="flex flex-col items-center gap-2 py-4">
-              <IllustrationEmptyState size={120} />
+              <Mascot pose="empty" size={100} />
               <p className="text-sm text-ag-text-secondary">ยังไม่มีรายจ่ายในเดือนนี้</p>
             </div>
           ) : (
@@ -172,17 +192,19 @@ export default function HomePage() {
         <div className="ag-animate-slide-up" style={{ animationDelay: "120ms" }}>
           <div className="mb-2 flex items-center justify-between">
             <h2 className="font-bold text-ag-text">รายการล่าสุด</h2>
-            <button
-              onClick={() => router.push("/history")}
-              className="flex items-center text-xs font-semibold text-ag-blue"
-            >
-              ดูทั้งหมด <ChevronRight size={14} />
-            </button>
+            {recentTx.length > 0 && (
+              <button
+                onClick={() => router.push("/history")}
+                className="flex items-center text-sm font-semibold text-ag-blue"
+              >
+                ดูทั้งหมด <ChevronRight size={14} />
+              </button>
+            )}
           </div>
           <Card padded={false} className="divide-y divide-ag-grayblue/60 px-4">
             {recentTx.length === 0 ? (
               <div className="flex flex-col items-center gap-2 py-8">
-                <IllustrationEmptyState size={120} />
+                <Mascot pose="empty" size={100} />
                 <p className="text-sm text-ag-text-secondary">ยังไม่มีรายการ ลองจดรายการแรกกันเลย</p>
               </div>
             ) : (
