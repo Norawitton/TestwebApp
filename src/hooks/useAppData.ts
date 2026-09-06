@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import {
   Account,
   Budget,
@@ -29,6 +30,7 @@ interface AppData {
 }
 
 export function useAppData(): AppData {
+  const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [accounts, setAccounts] = useState<Account[]>([]);
@@ -38,20 +40,30 @@ export function useAppData(): AppData {
 
   const refresh = useCallback(async () => {
     setLoading(true);
-    const [tx, acc, bud, gl, pf] = await Promise.all([
-      db.listTransactions(),
-      db.listAccounts(),
-      db.getBudget(),
-      db.listGoals(),
-      db.getProfile(),
-    ]);
-    setTransactions(tx);
-    setAccounts(acc);
-    setBudget(bud);
-    setGoals(gl);
-    setProfile(pf);
-    setLoading(false);
-  }, []);
+    try {
+      const [tx, acc, bud, gl, pf] = await Promise.all([
+        db.listTransactions(),
+        db.listAccounts(),
+        db.getBudget(),
+        db.listGoals(),
+        db.getProfile(),
+      ]);
+      setTransactions(tx);
+      setAccounts(acc);
+      setBudget(bud);
+      setGoals(gl);
+      setProfile(pf);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      if (msg.includes("ไม่ได้เข้าสู่ระบบ")) {
+        router.replace("/login");
+      } else {
+        console.error("โหลดข้อมูลไม่สำเร็จ:", err);
+      }
+    } finally {
+      setLoading(false);
+    }
+  }, [router]);
 
   useEffect(() => {
     refresh();
