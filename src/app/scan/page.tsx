@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useState } from "react";
+import { Suspense, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Camera, ImagePlus, X } from "lucide-react";
 import { Mascot } from "@/components/mascot/Mascot";
@@ -22,22 +22,66 @@ function ScanSlipInner() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const mode = searchParams.get("mode") === "upload" ? "upload" : "camera";
+
   const [state, setState] = useState<ScanState>("idle");
   const [result, setResult] = useState<SlipOcrResult | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
 
-  async function handleCapture() {
+  // input สำหรับกล้อง/ไฟล์
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  function handleButtonClick() {
+    fileInputRef.current?.click();
+  }
+
+  async function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // แสดง preview รูปภาพ
+    const dataUrl = await readFileAsDataUrl(file);
+    setPreviewUrl(dataUrl);
     setState("scanning");
+
     try {
-      const ocrResult = await scanSlip({});
-      setResult(ocrResult);
+      const ocrResult = await scanSlip({ imageDataUrl: dataUrl });
+      // ถ้า ocrResult เป็น null/0 amount → ยังเปิด review sheet ให้กรอกเอง
+      setResult(ocrResult ?? {
+        amount: 0,
+        date: new Date().toISOString(),
+        time: new Date().toLocaleTimeString("th-TH", { hour: "2-digit", minute: "2-digit" }),
+        merchant: "",
+        bank: "other",
+        suggestedCategory: "other",
+        refNumber: "",
+        confidence: 0,
+      });
       setState("done");
     } catch {
       setState("error");
     }
+    // reset input เพื่อให้เลือกรูปใหม่ได้
+    e.target.value = "";
+  }
+
+  function handleRetry() {
+    setPreviewUrl(null);
+    setState("idle");
+    setResult(null);
   }
 
   return (
     <div className="relative min-h-screen bg-ag-navy">
+      {/* hidden file input */}
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/*"
+        capture={mode === "camera" ? "environment" : undefined}
+        className="hidden"
+        onChange={handleFileChange}
+      />
+
       <div className="flex items-center justify-between px-4 pt-5">
         <button
           onClick={() => router.back()}
@@ -52,16 +96,27 @@ function ScanSlipInner() {
         <div className="w-10" />
       </div>
 
-      {/* Framing guide */}
+      {/* Framing guide / preview */}
       <div className="flex flex-col items-center justify-center px-10 pt-14">
-        <div className="relative flex h-[360px] w-full max-w-[300px] items-center justify-center rounded-[24px] border-2 border-dashed border-white/40">
-          <div className="absolute left-3 top-3 h-8 w-8 rounded-tl-2xl border-l-4 border-t-4 border-ag-yellow" />
-          <div className="absolute right-3 top-3 h-8 w-8 rounded-tr-2xl border-r-4 border-t-4 border-ag-yellow" />
-          <div className="absolute bottom-3 left-3 h-8 w-8 rounded-bl-2xl border-b-4 border-l-4 border-ag-yellow" />
-          <div className="absolute bottom-3 right-3 h-8 w-8 rounded-br-2xl border-b-4 border-r-4 border-ag-yellow" />
+        <div className="relative flex h-[360px] w-full max-w-[300px] items-center justify-center overflow-hidden rounded-[24px] border-2 border-dashed border-white/40">
+          {/* Corner decorations */}
+          <div className="pointer-events-none absolute left-3 top-3 h-8 w-8 rounded-tl-2xl border-l-4 border-t-4 border-ag-yellow z-10" />
+          <div className="pointer-events-none absolute right-3 top-3 h-8 w-8 rounded-tr-2xl border-r-4 border-t-4 border-ag-yellow z-10" />
+          <div className="pointer-events-none absolute bottom-3 left-3 h-8 w-8 rounded-bl-2xl border-b-4 border-l-4 border-ag-yellow z-10" />
+          <div className="pointer-events-none absolute bottom-3 right-3 h-8 w-8 rounded-br-2xl border-b-4 border-r-4 border-ag-yellow z-10" />
 
-          {state === "scanning" ? (
-            <div className="flex flex-col items-center gap-3">
+          {/* Preview image */}
+          {previewUrl && (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={previewUrl}
+              alt="สลิป"
+              className="absolute inset-0 h-full w-full object-cover"
+            />
+          )}
+
+          {state === "scanning" && (
+            <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-ag-navy/60">
               <div className="ag-animate-float">
                 <Mascot pose="peek" size={72} />
               </div>
@@ -70,16 +125,20 @@ function ScanSlipInner() {
                 <div className="h-full w-full origin-left animate-[ag-slide-up_1.4s_ease-in-out_infinite] bg-ag-yellow" />
               </div>
             </div>
-          ) : (
+          )}
+
+          {state === "idle" && !previewUrl && (
             <p className="max-w-[200px] text-center text-sm text-white/60">
-              วางสลิปให้อยู่ภายในกรอบ แล้วให้น้องออมช่วยอ่านข้อมูล
+              {mode === "camera"
+                ? "กดปุ่มด้านล่างเพื่อถ่ายภาพสลิป"
+                : "กดปุ่มด้านล่างเพื่อเลือกรูปสลิปจากคลัง"}
             </p>
           )}
         </div>
 
         {state === "idle" && (
           <button
-            onClick={handleCapture}
+            onClick={handleButtonClick}
             className="mt-10 flex h-20 w-20 items-center justify-center rounded-full bg-white ag-animate-pulse-ring active:scale-90"
             aria-label={mode === "camera" ? "ถ่ายภาพ" : "เลือกรูปภาพ"}
           >
@@ -96,7 +155,7 @@ function ScanSlipInner() {
             <Mascot pose="worried" size={64} />
             <p className="text-sm text-white/80">อ่านสลิปไม่สำเร็จ ลองอีกครั้งนะครับ</p>
             <button
-              onClick={handleCapture}
+              onClick={handleRetry}
               className="rounded-2xl bg-ag-yellow px-5 py-2.5 text-sm font-bold text-ag-navy active:scale-95"
             >
               ลองอีกครั้ง
@@ -114,4 +173,13 @@ function ScanSlipInner() {
       )}
     </div>
   );
+}
+
+function readFileAsDataUrl(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result as string);
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
 }

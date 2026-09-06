@@ -19,7 +19,8 @@ interface SlipReviewSheetProps {
 
 export function SlipReviewSheet({ result, onSaved }: SlipReviewSheetProps) {
   const { accounts, addTransaction } = useAppData();
-  const [amount, setAmount] = useState(result.amount.toString());
+  const hasOcrData = result.confidence > 0;
+  const [amount, setAmount] = useState(result.amount > 0 ? result.amount.toString() : "");
   const [merchant, setMerchant] = useState(result.merchant);
   const [category, setCategory] = useState<CategoryId>(result.suggestedCategory);
   const [note, setNote] = useState("");
@@ -73,7 +74,9 @@ export function SlipReviewSheet({ result, onSaved }: SlipReviewSheetProps) {
         <div className="mb-4 flex items-center gap-3 rounded-2xl bg-ag-yellow-soft p-3">
           <Mascot pose="coin" size={48} />
           <p className="text-sm font-medium text-ag-navy">
-            น้องออมอ่านสลิปให้แล้ว ลองตรวจสอบข้อมูลอีกครั้งก่อนบันทึกนะครับ
+            {hasOcrData
+              ? "น้องออมอ่านสลิปให้แล้ว ลองตรวจสอบข้อมูลอีกครั้งก่อนบันทึกนะครับ"
+              : "กรอกข้อมูลรายการจากสลิปด้วยตัวเองได้เลยครับ"}
           </p>
         </div>
 
