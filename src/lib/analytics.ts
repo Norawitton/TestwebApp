@@ -16,14 +16,23 @@ export function filterByMonth(transactions: Transaction[], monthKey: string): Tr
   return transactions.filter((t) => monthKeyOf(t.date) === monthKey);
 }
 
+// "pending" transactions (money not actually received/paid yet) are excluded
+// from every total/aggregate below — they're still visible in the history
+// list, they just don't count as real money until confirmed.
+function isConfirmed(t: Transaction): boolean {
+  return t.status !== "pending";
+}
+
 export function sumByType(transactions: Transaction[], type: "expense" | "income"): number {
-  return transactions.filter((t) => t.type === type).reduce((s, t) => s + t.amount, 0);
+  return transactions
+    .filter((t) => t.type === type && isConfirmed(t))
+    .reduce((s, t) => s + t.amount, 0);
 }
 
 export function sumByCategory(transactions: Transaction[]): Record<CategoryId, number> {
   const result: Partial<Record<CategoryId, number>> = {};
   transactions
-    .filter((t) => t.type === "expense")
+    .filter((t) => t.type === "expense" && isConfirmed(t))
     .forEach((t) => {
       result[t.category] = (result[t.category] ?? 0) + t.amount;
     });
@@ -41,7 +50,7 @@ export function topCategories(transactions: Transaction[], n = 3): { category: C
 export function topMerchants(transactions: Transaction[], n = 5): { merchant: string; amount: number; count: number }[] {
   const map = new Map<string, { amount: number; count: number }>();
   transactions
-    .filter((t) => t.type === "expense")
+    .filter((t) => t.type === "expense" && isConfirmed(t))
     .forEach((t) => {
       const cur = map.get(t.merchant) ?? { amount: 0, count: 0 };
       map.set(t.merchant, { amount: cur.amount + t.amount, count: cur.count + 1 });
@@ -57,7 +66,7 @@ export function dailySpendSeries(transactions: Transaction[], monthKey: string):
   const daysInMonth = new Date(y, m, 0).getDate();
   const series = Array.from({ length: daysInMonth }, (_, i) => ({ day: i + 1, amount: 0 }));
   transactions
-    .filter((t) => t.type === "expense" && monthKeyOf(t.date) === monthKey)
+    .filter((t) => t.type === "expense" && monthKeyOf(t.date) === monthKey && isConfirmed(t))
     .forEach((t) => {
       const day = new Date(t.date).getDate();
       series[day - 1].amount += t.amount;
@@ -100,7 +109,7 @@ export function recurringMerchants(transactions: Transaction[]): { merchant: str
   // amount more than once are treated as "recurring" (subscriptions, rent).
   const map = new Map<string, number>();
   transactions
-    .filter((t) => t.type === "expense")
+    .filter((t) => t.type === "expense" && isConfirmed(t))
     .forEach((t) => {
       const key = `${t.merchant}__${t.amount}`;
       map.set(key, (map.get(key) ?? 0) + 1);

@@ -13,6 +13,10 @@ export type CategoryId =
   | "health"
   | "education"
   | "investment"
+  | "clinic"
+  | "salary"
+  | "freelance"
+  | "gift"
   | "income"
   | "other";
 
@@ -46,6 +50,8 @@ export type BankId =
   | "krungsri"
   | "other";
 
+export type TransactionStatus = "completed" | "pending";
+
 export interface Transaction {
   id: string;
   type: TransactionType;
@@ -57,6 +63,10 @@ export interface Transaction {
   note?: string;
   source: "manual" | "credit_card";
   bank?: BankId;
+  // "pending" = money hasn't actually moved yet (e.g. invoiced but not paid,
+  // work done but payment not received). Missing/undefined behaves exactly
+  // like "completed" so existing rows and mock data need no changes.
+  status?: TransactionStatus;
   createdAt: string;
 }
 

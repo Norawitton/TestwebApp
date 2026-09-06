@@ -1,21 +1,21 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Search, SlidersHorizontal, Trash2, Pencil } from "lucide-react";
+import { Search, SlidersHorizontal, Trash2, Pencil, Check } from "lucide-react";
 import { AppShell } from "@/components/nav/AppShell";
 import { ScreenHeader } from "@/components/ui/ScreenHeader";
 import { CategoryIcon } from "@/components/ui/CategoryIcon";
 import { IllustrationEmptyState } from "@/components/illustrations/Illustrations";
 import { useAppData } from "@/hooks/useAppData";
-import { Transaction, TransactionType } from "@/lib/types";
-import { CATEGORIES, EXPENSE_CATEGORY_LIST } from "@/lib/categories";
+import { CategoryId, Transaction, TransactionType } from "@/lib/types";
+import { CATEGORIES, EXPENSE_CATEGORY_LIST, INCOME_CATEGORY_LIST } from "@/lib/categories";
 import { formatBaht, relativeDayLabel, formatThaiTime } from "@/lib/format";
 import { clsx } from "clsx";
 
 type TabFilter = "all" | "expense" | "income";
 
 export default function HistoryPage() {
-  const { transactions, accounts, loading, removeTransaction } = useAppData();
+  const { transactions, accounts, loading, removeTransaction, editTransaction } = useAppData();
   const [query, setQuery] = useState("");
   const [tab, setTab] = useState<TabFilter>("all");
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
@@ -43,6 +43,12 @@ export default function HistoryPage() {
     });
     return Array.from(map.entries()).sort((a, b) => (a[0] < b[0] ? 1 : -1));
   }, [filtered]);
+
+  const categoryOptions: CategoryId[] = useMemo(() => {
+    if (tab === "income") return INCOME_CATEGORY_LIST;
+    if (tab === "expense") return EXPENSE_CATEGORY_LIST;
+    return Array.from(new Set([...EXPENSE_CATEGORY_LIST, ...INCOME_CATEGORY_LIST]));
+  }, [tab]);
 
   return (
     <AppShell>
@@ -81,7 +87,7 @@ export default function HistoryPage() {
           ).map((t) => (
             <button
               key={t.key}
-              onClick={() => setTab(t.key)}
+              onClick={() => { setTab(t.key); setCategoryFilter("all"); }}
               className={clsx(
                 "rounded-full px-4 py-2 text-sm font-semibold transition-colors",
                 tab === t.key ? "bg-ag-navy text-white" : "bg-ag-grayblue text-ag-text-secondary"
@@ -101,7 +107,7 @@ export default function HistoryPage() {
                 <FilterChip active={categoryFilter === "all"} onClick={() => setCategoryFilter("all")}>
                   ทั้งหมด
                 </FilterChip>
-                {EXPENSE_CATEGORY_LIST.map((c) => (
+                {categoryOptions.map((c) => (
                   <FilterChip key={c} active={categoryFilter === c} onClick={() => setCategoryFilter(c)}>
                     {CATEGORIES[c].label}
                   </FilterChip>
@@ -151,6 +157,7 @@ export default function HistoryPage() {
                     swiped={swipedId === tx.id}
                     onSwipe={() => setSwipedId(swipedId === tx.id ? null : tx.id)}
                     onDelete={() => removeTransaction(tx.id)}
+                    onConfirm={() => editTransaction(tx.id, { status: "completed" })}
                   />
                 ))}
               </div>
@@ -189,16 +196,28 @@ function SwipeableRow({
   swiped,
   onSwipe,
   onDelete,
+  onConfirm,
 }: {
   tx: Transaction;
   swiped: boolean;
   onSwipe: () => void;
   onDelete: () => void;
+  onConfirm: () => void;
 }) {
   const isIncome = tx.type === "income";
+  const isPending = tx.status === "pending";
   return (
     <div className="relative overflow-hidden rounded-2xl">
       <div className="absolute inset-y-0 right-0 flex items-center gap-1 pr-1">
+        {isPending && (
+          <button
+            onClick={onConfirm}
+            aria-label="ยืนยันรายการ"
+            className="flex h-full items-center justify-center rounded-xl bg-ag-green px-4"
+          >
+            <Check size={18} color="white" />
+          </button>
+        )}
         <button
           aria-label="แก้ไข"
           className="flex h-full items-center justify-center rounded-xl bg-ag-blue px-4"
@@ -217,15 +236,20 @@ function SwipeableRow({
         onClick={onSwipe}
         className={clsx(
           "relative flex w-full items-center gap-3 bg-white px-2 py-3 text-left transition-transform duration-200",
-          swiped && "-translate-x-[104px]"
+          swiped && (isPending ? "-translate-x-[156px]" : "-translate-x-[104px]")
         )}
       >
         <CategoryIcon category={tx.category} />
         <div className="min-w-0 flex-1">
           <p className="truncate text-sm font-semibold text-ag-text">{tx.merchant}</p>
-          <p className="text-xs text-ag-text-secondary">
-            {CATEGORIES[tx.category].label} · {formatThaiTime(tx.date)}
-          </p>
+          <div className="flex items-center gap-1.5 text-xs text-ag-text-secondary">
+            <span>{CATEGORIES[tx.category].label} · {formatThaiTime(tx.date)}</span>
+            {isPending && (
+              <span className="shrink-0 rounded-full bg-ag-yellow/40 px-1.5 py-0.5 text-[10px] font-bold text-[#8a6d00]">
+                รอยืนยัน
+              </span>
+            )}
+          </div>
         </div>
         <span className={clsx("ag-money shrink-0 text-sm font-bold", isIncome ? "text-ag-green" : "text-ag-text")}>
           {isIncome ? "+" : "-"}
