@@ -12,6 +12,14 @@ export function previousMonthKey(): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
 }
 
+// เลื่อน monthKey ("YYYY-MM") ไป delta เดือน (ติดลบ = ย้อนกลับ) จากเดือนใดก็ได้
+// ต่างจาก previousMonthKey() ที่อิงเดือนปัจจุบันตายตัวเสมอ
+export function shiftMonthKey(monthKey: string, delta: number): string {
+  const [y, m] = monthKey.split("-").map(Number);
+  const d = new Date(y, m - 1 + delta, 1);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+}
+
 export function filterByMonth(transactions: Transaction[], monthKey: string): Transaction[] {
   return transactions.filter((t) => monthKeyOf(t.date) === monthKey);
 }

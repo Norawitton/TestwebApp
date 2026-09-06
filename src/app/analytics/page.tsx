@@ -27,7 +27,7 @@ import { buildAnalyticsInsights } from "@/lib/insights";
 import { Repeat } from "lucide-react";
 
 export default function AnalyticsPage() {
-  const { transactions, loading } = useAppData();
+  const { transactions, budget, loading } = useAppData();
   const monthKey = currentMonthKey();
   const monthTx = useMemo(() => filterByMonth(transactions, monthKey), [transactions, monthKey]);
 
@@ -44,7 +44,7 @@ export default function AnalyticsPage() {
   const pendingIncome = useMemo(() => sumPending(monthTx, "income"), [monthTx]);
   const merchants = useMemo(() => topMerchants(monthTx, 5), [monthTx]);
   const recurring = useMemo(() => recurringMerchants(transactions), [transactions]);
-  const insights = useMemo(() => buildAnalyticsInsights(transactions, null), [transactions]);
+  const insights = useMemo(() => buildAnalyticsInsights(transactions, budget), [transactions, budget]);
 
   if (loading) {
     return (

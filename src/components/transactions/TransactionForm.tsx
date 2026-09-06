@@ -212,21 +212,37 @@ export function TransactionForm({ type, title, restrictToAccountType, existing }
         {/* Account */}
         <div>
           <label className="mb-1.5 block text-sm font-semibold text-ag-text">บัญชี</label>
-          <div className="flex flex-col gap-2">
-            {availableAccounts.map((acc) => (
+          {availableAccounts.length === 0 ? (
+            <div className="rounded-2xl border border-dashed border-ag-grayblue bg-white px-4 py-4 text-center">
+              <p className="text-sm text-ag-text-secondary">
+                {restrictToAccountType === "credit_card"
+                  ? "ยังไม่มีบัตรเครดิตในระบบ ต้องเพิ่มบัตรก่อนถึงจะบันทึกรายการนี้ได้"
+                  : "ยังไม่มีบัญชีในระบบ ต้องเพิ่มบัญชีก่อนถึงจะบันทึกรายการได้"}
+              </p>
               <button
-                key={acc.id}
-                onClick={() => setAccountId(acc.id)}
-                className={clsx(
-                  "flex items-center justify-between rounded-2xl border px-4 py-3 text-left transition-colors",
-                  accountId === acc.id ? "border-ag-blue bg-[#EAF4FE]" : "border-ag-grayblue bg-white"
-                )}
+                onClick={() => router.push("/accounts")}
+                className="mt-2 text-sm font-bold text-ag-blue active:opacity-60"
               >
-                <span className="text-sm font-semibold text-ag-text">{acc.name}</span>
-                {acc.last4 && <span className="text-xs text-ag-text-secondary">•••• {acc.last4}</span>}
+                {restrictToAccountType === "credit_card" ? "เพิ่มบัตรเครดิต" : "เพิ่มบัญชี"} →
               </button>
-            ))}
-          </div>
+            </div>
+          ) : (
+            <div className="flex flex-col gap-2">
+              {availableAccounts.map((acc) => (
+                <button
+                  key={acc.id}
+                  onClick={() => setAccountId(acc.id)}
+                  className={clsx(
+                    "flex items-center justify-between rounded-2xl border px-4 py-3 text-left transition-colors",
+                    accountId === acc.id ? "border-ag-blue bg-[#EAF4FE]" : "border-ag-grayblue bg-white"
+                  )}
+                >
+                  <span className="text-sm font-semibold text-ag-text">{acc.name}</span>
+                  {acc.last4 && <span className="text-xs text-ag-text-secondary">•••• {acc.last4}</span>}
+                </button>
+              ))}
+            </div>
+          )}
           {errors.account && <p className="mt-1 text-xs font-semibold text-ag-coral">{errors.account}</p>}
         </div>
 

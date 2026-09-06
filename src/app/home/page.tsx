@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { ChevronDown, ChevronRight } from "lucide-react";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 import { AppShell } from "@/components/nav/AppShell";
 import { Mascot } from "@/components/mascot/Mascot";
 import { Card } from "@/components/ui/Card";
@@ -16,7 +16,7 @@ import {
   currentMonthKey,
   filterByMonth,
   percentChange,
-  previousMonthKey,
+  shiftMonthKey,
   sumByType,
   sumPending,
 } from "@/lib/analytics";
@@ -34,18 +34,21 @@ function greetingByHour(): string {
 export default function HomePage() {
   const router = useRouter();
   const { loading, transactions, budget } = useAppData();
-  const [monthKey] = useState(currentMonthKey());
+  const [monthKey, setMonthKey] = useState(currentMonthKey());
+  const isCurrentMonth = monthKey === currentMonthKey();
 
   const monthTx = useMemo(() => filterByMonth(transactions, monthKey), [transactions, monthKey]);
   const prevMonthTx = useMemo(
-    () => filterByMonth(transactions, previousMonthKey()),
-    [transactions]
+    () => filterByMonth(transactions, shiftMonthKey(monthKey, -1)),
+    [transactions, monthKey]
   );
 
   const totalExpense = sumByType(monthTx, "expense");
   const prevExpense = sumByType(prevMonthTx, "expense");
   const change = percentChange(totalExpense, prevExpense);
 
+  // งบประมาณเก็บไว้แค่เดือนปัจจุบันเดือนเดียว (getBudget() ดึงของเดือนจริงเสมอ)
+  // ตอนเลื่อนไปดูเดือนอื่น เลยโชว์ตัวเลขงบไม่ได้เพราะจะเป็นงบคนละเดือนกับที่ดูอยู่
   const budgetLimit = budget?.totalLimit ?? 0;
   const budgetRemaining = Math.max(0, budgetLimit - totalExpense);
   const usedPercent = percent(totalExpense, budgetLimit);
@@ -83,13 +86,31 @@ export default function HomePage() {
           </div>
         </div>
 
-        <button className="mt-6 flex items-center gap-1.5 rounded-full bg-white/10 px-3.5 py-1.5">
-          <span className="text-sm font-semibold">{formatThaiMonthYear(monthKey)}</span>
-          <ChevronDown size={16} />
-        </button>
+        <div className="mt-6 flex items-center gap-2">
+          <button
+            onClick={() => setMonthKey((mk) => shiftMonthKey(mk, -1))}
+            aria-label="เดือนก่อนหน้า"
+            className="flex h-8 w-8 items-center justify-center rounded-full bg-white/10 active:bg-white/20"
+          >
+            <ChevronLeft size={16} />
+          </button>
+          <span className="rounded-full bg-white/10 px-3.5 py-1.5 text-sm font-semibold">
+            {formatThaiMonthYear(monthKey)}
+          </span>
+          <button
+            onClick={() => !isCurrentMonth && setMonthKey((mk) => shiftMonthKey(mk, 1))}
+            disabled={isCurrentMonth}
+            aria-label="เดือนถัดไป"
+            className="flex h-8 w-8 items-center justify-center rounded-full bg-white/10 active:bg-white/20 disabled:opacity-30"
+          >
+            <ChevronRight size={16} />
+          </button>
+        </div>
 
         <div className="mt-5">
-          <p className="text-sm font-medium text-white/80">รายจ่ายเดือนนี้</p>
+          <p className="text-sm font-medium text-white/80">
+            {isCurrentMonth ? "รายจ่ายเดือนนี้" : "รายจ่าย"}
+          </p>
           <div className="mt-1.5 flex items-end justify-between gap-2">
             <p className="ag-money text-4xl font-bold">{formatBaht(totalExpense)}</p>
             {hasComparisonData ? (
@@ -109,18 +130,26 @@ export default function HomePage() {
           </div>
         </div>
 
-        <div className="mt-6 rounded-2xl bg-white/10 p-4">
-          <div className="flex items-center justify-between text-sm">
-            <span className="font-medium text-white/85">งบประมาณคงเหลือ</span>
-            <span className="ag-money font-bold">{formatBaht(budgetRemaining)}</span>
+        {isCurrentMonth ? (
+          <div className="mt-6 rounded-2xl bg-white/10 p-4">
+            <div className="flex items-center justify-between text-sm">
+              <span className="font-medium text-white/85">งบประมาณคงเหลือ</span>
+              <span className="ag-money font-bold">{formatBaht(budgetRemaining)}</span>
+            </div>
+            <div className="mt-3">
+              <ProgressBar percent={usedPercent} height={10} trackColor="rgba(255,255,255,0.15)" showThresholds />
+            </div>
+            <p className="ag-money mt-2 text-sm font-medium text-white/75">
+              ใช้ไปแล้ว {usedPercent}% จากงบ {formatBaht(budgetLimit)}
+            </p>
           </div>
-          <div className="mt-3">
-            <ProgressBar percent={usedPercent} height={10} trackColor="rgba(255,255,255,0.15)" showThresholds />
+        ) : (
+          <div className="mt-6 rounded-2xl bg-white/10 p-4">
+            <p className="text-sm font-medium text-white/75">
+              งบประมาณติดตามได้เฉพาะเดือนปัจจุบัน — กลับไปเดือนนี้เพื่อดูสถานะงบ
+            </p>
           </div>
-          <p className="ag-money mt-2 text-sm font-medium text-white/75">
-            ใช้ไปแล้ว {usedPercent}% จากงบ {formatBaht(budgetLimit)}
-          </p>
-        </div>
+        )}
       </div>
 
       <div className="flex flex-col gap-5 px-5 pt-5">

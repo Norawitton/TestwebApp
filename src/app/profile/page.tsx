@@ -20,6 +20,7 @@ import {
 } from "lucide-react";
 import { IllustrationCreditCard } from "@/components/illustrations/Illustrations";
 import { useRouter } from "next/navigation";
+import { clsx } from "clsx";
 
 export default function ProfilePage() {
   const router = useRouter();
@@ -118,7 +119,7 @@ export default function ProfilePage() {
         <div>
           <h2 className="mb-2 font-bold text-ag-text">การตั้งค่า</h2>
           <Card padded={false} className="divide-y divide-ag-grayblue/60">
-            <SettingsRow icon={Bell} label="การแจ้งเตือน" />
+            <SettingsRow icon={Bell} label="การแจ้งเตือน" comingSoon />
             <SettingsRow
               icon={Fingerprint}
               label="ตั้งค่า PIN หรือ Biometric"
@@ -155,8 +156,8 @@ export default function ProfilePage() {
               </span>
               <ChevronRight size={16} color="#71818E" />
             </button>
-            <SettingsRow icon={RefreshCw} label="สำรองข้อมูล" />
-            <SettingsRow icon={ShieldCheck} label="นโยบายความเป็นส่วนตัว" />
+            <SettingsRow icon={RefreshCw} label="สำรองข้อมูล" comingSoon />
+            <SettingsRow icon={ShieldCheck} label="นโยบายความเป็นส่วนตัว" comingSoon />
           </Card>
         </div>
 
@@ -226,16 +227,26 @@ function SettingsRow({
   icon: Icon,
   label,
   trailing,
+  comingSoon,
 }: {
   icon: React.ComponentType<{ size?: number; color?: string }>;
   label: string;
   trailing?: React.ReactNode;
+  // ยังไม่มีฟีเจอร์รองรับจริง — โชว์ป้าย "เร็วๆ นี้" แทนลูกศร ">" เพื่อไม่ให้
+  // ดูเหมือนกดแล้วไปหน้าอื่นได้ทั้งที่กดไปก็ไม่มีอะไรเกิดขึ้น
+  comingSoon?: boolean;
 }) {
   return (
-    <div className="flex items-center gap-3 px-4 py-3.5">
+    <div className={clsx("flex items-center gap-3 px-4 py-3.5", comingSoon && "opacity-50")}>
       <Icon size={18} color="#71818E" />
       <span className="flex-1 text-sm font-semibold text-ag-text">{label}</span>
-      {trailing ?? <ChevronRight size={16} color="#71818E" />}
+      {comingSoon ? (
+        <span className="rounded-full bg-ag-grayblue px-2.5 py-1 text-[11px] font-semibold text-ag-text-secondary">
+          เร็วๆ นี้
+        </span>
+      ) : (
+        trailing ?? <ChevronRight size={16} color="#71818E" />
+      )}
     </div>
   );
 }
