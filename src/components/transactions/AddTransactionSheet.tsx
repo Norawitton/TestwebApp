@@ -1,6 +1,6 @@
 "use client";
 
-import { MinusCircle, PlusCircle, CreditCard, X } from "lucide-react";
+import { MinusCircle, PlusCircle, CreditCard, X, CheckSquare, CalendarDays, ShoppingCart } from "lucide-react";
 
 interface AddTransactionSheetProps {
   open: boolean;
@@ -32,6 +32,30 @@ const OPTIONS = [
     path: "/add/credit-card",
     bg: "#EDE3F7",
     fg: "#4E2E7F",
+  },
+  {
+    icon: CheckSquare,
+    label: "สิ่งที่ต้องทำ",
+    desc: "จัดการงานและสิ่งที่ต้องทำ",
+    path: "/tasks",
+    bg: "#E1F0FF",
+    fg: "#1689F5",
+  },
+  {
+    icon: CalendarDays,
+    label: "ปฏิทิน",
+    desc: "ดูและเพิ่มกิจกรรม นัดหมาย",
+    path: "/calendar",
+    bg: "#FFF6D9",
+    fg: "#B8860B",
+  },
+  {
+    icon: ShoppingCart,
+    label: "รายการซื้อของ",
+    desc: "จดของที่ต้องซื้อ",
+    path: "/shopping",
+    bg: "#FDEBD9",
+    fg: "#E78132",
   },
 ];
 

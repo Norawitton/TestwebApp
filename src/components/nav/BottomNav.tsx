@@ -24,7 +24,7 @@ export function BottomNav() {
     <>
       <nav className="fixed inset-x-0 bottom-0 z-40 mx-auto max-w-[480px]">
         <div className="relative flex h-[76px] items-center justify-between bg-white px-4 pb-[env(safe-area-inset-bottom)] shadow-[0_-4px_20px_rgba(16,42,58,0.08)]">
-          {NAV_ITEMS.map((item, idx) => {
+          {NAV_ITEMS.map((item) => {
             if (item === null) {
               return (
                 <div key="fab" className="relative flex w-16 justify-center">
