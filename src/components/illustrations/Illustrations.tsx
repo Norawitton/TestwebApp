@@ -5,30 +5,30 @@
 // wallet, card, graph) per the brand brief. Used across onboarding and
 // empty states.
 
-export function IllustrationSlipCapture({ size = 200 }: { size?: number }) {
+export function IllustrationQuickEntry({ size = 200 }: { size?: number }) {
   return (
-    <svg viewBox="0 0 240 220" width={size} height={size} role="img" aria-label="ภาพประกอบการถ่ายสลิป">
+    <svg viewBox="0 0 240 220" width={size} height={size} role="img" aria-label="ภาพประกอบการจดรายการอย่างรวดเร็ว">
       <ellipse cx="120" cy="200" rx="80" ry="10" fill="#00233D" opacity="0.06" />
       {/* phone body, slight isometric tilt */}
       <g transform="rotate(-6 120 110)">
         <rect x="70" y="30" width="100" height="170" rx="20" fill="#00233D" />
         <rect x="78" y="46" width="84" height="130" rx="10" fill="#FFFDF7" />
-        {/* slip peeking out of phone screen */}
-        <rect x="94" y="60" width="52" height="80" rx="6" fill="#FFD64F" />
-        <rect x="102" y="72" width="36" height="4" rx="2" fill="#00233D" opacity="0.4" />
-        <rect x="102" y="82" width="36" height="4" rx="2" fill="#00233D" opacity="0.25" />
-        <rect x="102" y="92" width="24" height="4" rx="2" fill="#00233D" opacity="0.25" />
-        <rect x="102" y="112" width="36" height="6" rx="3" fill="#E78132" />
-        {/* corner guide brackets */}
-        <path d="M90 64 L90 58 L96 58" stroke="#1689F5" strokeWidth="3" fill="none" strokeLinecap="round" />
-        <path d="M150 64 L150 58 L144 58" stroke="#1689F5" strokeWidth="3" fill="none" strokeLinecap="round" />
-        <path d="M90 136 L90 142 L96 142" stroke="#1689F5" strokeWidth="3" fill="none" strokeLinecap="round" />
-        <path d="M150 136 L150 142 L144 142" stroke="#1689F5" strokeWidth="3" fill="none" strokeLinecap="round" />
+        {/* transaction list rows on screen */}
+        <rect x="90" y="62" width="60" height="18" rx="9" fill="#EAF1F7" />
+        <circle cx="99" cy="71" r="6" fill="#E78132" />
+        <rect x="90" y="86" width="60" height="18" rx="9" fill="#EAF1F7" />
+        <circle cx="99" cy="95" r="6" fill="#1689F5" />
+        <rect x="90" y="110" width="60" height="18" rx="9" fill="#EAF1F7" />
+        <circle cx="99" cy="119" r="6" fill="#20B978" />
+        {/* big tappable "+" button */}
+        <circle cx="120" cy="152" r="16" fill="#1689F5" />
+        <path d="M120 145 V159 M113 152 H127" stroke="#FFFDF7" strokeWidth="3.5" strokeLinecap="round" />
         <circle cx="120" cy="184" r="6" fill="#EAF1F7" />
       </g>
+      {/* tapping finger */}
+      <path d="M186 130 Q196 118 190 104" stroke="#F5A94E" strokeWidth="14" strokeLinecap="round" fill="none" />
+      <circle cx="188" cy="100" r="9" fill="#F5A94E" />
       {/* floating coin */}
-      <circle cx="184" cy="70" r="16" fill="#FFD64F" stroke="#E78132" strokeWidth="2" />
-      <text x="184" y="76" fontSize="16" textAnchor="middle" fill="#E78132" fontWeight="700" fontFamily="IBM Plex Sans Thai, sans-serif">฿</text>
       <circle cx="50" cy="150" r="10" fill="#1689F5" opacity="0.85" />
     </svg>
   );

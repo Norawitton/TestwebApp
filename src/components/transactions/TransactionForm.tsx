@@ -10,6 +10,7 @@ import { CategoryId, TransactionType } from "@/lib/types";
 import { CATEGORIES, EXPENSE_CATEGORY_LIST, INCOME_CATEGORY_LIST } from "@/lib/categories";
 import { clsx } from "clsx";
 import { Mascot } from "@/components/mascot/Mascot";
+import { RequireAuth } from "@/components/auth/RequireAuth";
 
 function toDateInputValue(d: Date): string {
   const y = d.getFullYear();
@@ -108,6 +109,7 @@ export function TransactionForm({ type, title, restrictToAccountType }: Transact
   }
 
   return (
+    <RequireAuth>
     <div className="mx-auto min-h-screen max-w-[480px] bg-ag-offwhite pb-10">
       <ScreenHeader title={title} />
 
@@ -241,5 +243,6 @@ export function TransactionForm({ type, title, restrictToAccountType }: Transact
         </Button>
       </div>
     </div>
+    </RequireAuth>
   );
 }

@@ -6,6 +6,7 @@ interface MascotTipCardProps {
   pose?: MascotPose;
   tone?: "info" | "warning" | "success" | "encourage";
   action?: { label: string; onClick: () => void };
+  actions?: { label: string; onClick: () => void }[];
   className?: string;
 }
 
@@ -21,8 +22,10 @@ export function MascotTipCard({
   pose = "point",
   tone = "info",
   action,
+  actions,
   className,
 }: MascotTipCardProps) {
+  const allActions = actions ?? (action ? [action] : []);
   return (
     <div className={clsx("flex items-start gap-3 rounded-[22px] p-4", TONE_BG[tone], className)}>
       <div className="shrink-0">
@@ -30,13 +33,18 @@ export function MascotTipCard({
       </div>
       <div className="flex-1 pt-1">
         <p className="text-sm font-medium leading-relaxed text-ag-text">{message}</p>
-        {action && (
-          <button
-            onClick={action.onClick}
-            className="mt-2 text-sm font-bold text-ag-blue active:opacity-60"
-          >
-            {action.label} →
-          </button>
+        {allActions.length > 0 && (
+          <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1.5">
+            {allActions.map((a) => (
+              <button
+                key={a.label}
+                onClick={a.onClick}
+                className="text-sm font-bold text-ag-blue active:opacity-60"
+              >
+                {a.label} →
+              </button>
+            ))}
+          </div>
         )}
       </div>
     </div>
