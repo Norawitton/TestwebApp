@@ -57,9 +57,37 @@ export const CATEGORIES: Record<CategoryId, Category> = {
     color: "#6C63FF",
     icon: "TrendingUp",
   },
+  clinic: {
+    id: "clinic",
+    label: "คลินิก",
+    labelEn: "Clinic",
+    color: "#0B8342",
+    icon: "Stethoscope",
+  },
+  salary: {
+    id: "salary",
+    label: "เงินเดือน",
+    labelEn: "Salary",
+    color: "#20B978",
+    icon: "Wallet",
+  },
+  freelance: {
+    id: "freelance",
+    label: "งานฟรีแลนซ์",
+    labelEn: "Freelance",
+    color: "#1689F5",
+    icon: "Briefcase",
+  },
+  gift: {
+    id: "gift",
+    label: "ได้รับ/ของขวัญ",
+    labelEn: "Gift",
+    color: "#F36B5F",
+    icon: "Gift",
+  },
   income: {
     id: "income",
-    label: "รายรับ",
+    label: "รายรับอื่น ๆ",
     labelEn: "Income",
     color: "#20B978",
     icon: "Wallet",
@@ -82,7 +110,17 @@ export const EXPENSE_CATEGORY_LIST: CategoryId[] = [
   "health",
   "education",
   "investment",
+  "clinic",
   "other",
+];
+
+export const INCOME_CATEGORY_LIST: CategoryId[] = [
+  "salary",
+  "freelance",
+  "clinic",
+  "investment",
+  "gift",
+  "income",
 ];
 
 export const BANKS: Record<string, { name: string; color: string }> = {

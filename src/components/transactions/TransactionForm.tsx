@@ -7,9 +7,23 @@ import { Button } from "@/components/ui/Button";
 import { CategoryIcon } from "@/components/ui/CategoryIcon";
 import { useAppData } from "@/hooks/useAppData";
 import { CategoryId, TransactionType } from "@/lib/types";
-import { CATEGORIES, EXPENSE_CATEGORY_LIST } from "@/lib/categories";
+import { CATEGORIES, EXPENSE_CATEGORY_LIST, INCOME_CATEGORY_LIST } from "@/lib/categories";
 import { clsx } from "clsx";
 import { Mascot } from "@/components/mascot/Mascot";
+
+function toDateInputValue(d: Date): string {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}
+
+// รวมวันที่ที่ผู้ใช้เลือกเข้ากับเวลาปัจจุบัน (local time) แล้วคืนเป็น ISO string
+function combineDateWithNow(dateStr: string): string {
+  const now = new Date();
+  const [y, m, d] = dateStr.split("-").map(Number);
+  return new Date(y, m - 1, d, now.getHours(), now.getMinutes(), now.getSeconds()).toISOString();
+}
 
 interface TransactionFormProps {
   type: TransactionType;
@@ -30,8 +44,10 @@ export function TransactionForm({ type, title, restrictToAccountType }: Transact
   const { accounts, addTransaction } = useAppData();
   const [amount, setAmount] = useState("");
   const [merchant, setMerchant] = useState("");
-  const [category, setCategory] = useState<CategoryId>(type === "income" ? "income" : "food");
+  const [category, setCategory] = useState<CategoryId>(type === "income" ? "salary" : "food");
   const [accountId, setAccountId] = useState<string>("");
+  const [dateStr, setDateStr] = useState(() => toDateInputValue(new Date()));
+  const [pending, setPending] = useState(false);
   const [note, setNote] = useState("");
   const [errors, setErrors] = useState<FormErrors>({});
   const [saving, setSaving] = useState(false);
@@ -40,6 +56,7 @@ export function TransactionForm({ type, title, restrictToAccountType }: Transact
   const availableAccounts = restrictToAccountType
     ? accounts.filter((a) => a.type === restrictToAccountType)
     : accounts;
+  const categoryList = type === "income" ? INCOME_CATEGORY_LIST : EXPENSE_CATEGORY_LIST;
 
   function validate(): boolean {
     const next: FormErrors = {};
@@ -50,7 +67,7 @@ export function TransactionForm({ type, title, restrictToAccountType }: Transact
     if (!merchant.trim()) {
       next.merchant = type === "income" ? "กรุณาระบุแหล่งที่มาของรายรับ" : "กรุณาระบุชื่อร้านค้าหรือรายการ";
     }
-    if (type === "expense" && !category) {
+    if (!category) {
       next.category = "กรุณาเลือกหมวดหมู่";
     }
     if (!accountId) {
@@ -68,11 +85,12 @@ export function TransactionForm({ type, title, restrictToAccountType }: Transact
       type,
       amount: numeric,
       merchant: merchant.trim(),
-      category: type === "income" ? "income" : category,
+      category,
       accountId,
-      date: new Date().toISOString(),
+      date: combineDateWithNow(dateStr),
       note: note.trim() || undefined,
       source: restrictToAccountType === "credit_card" ? "credit_card" : "manual",
+      status: pending ? "pending" : "completed",
     });
     setSaving(false);
     setSuccess(true);
@@ -127,34 +145,44 @@ export function TransactionForm({ type, title, restrictToAccountType }: Transact
           {errors.merchant && <p className="mt-1 text-xs font-semibold text-ag-coral">{errors.merchant}</p>}
         </div>
 
-        {/* Category (expense only) */}
-        {type !== "income" && (
-          <div>
-            <label className="mb-2 block text-sm font-semibold text-ag-text">หมวดหมู่</label>
-            <div className="grid grid-cols-4 gap-3">
-              {EXPENSE_CATEGORY_LIST.map((catId) => (
-                <button
-                  key={catId}
-                  onClick={() => setCategory(catId)}
-                  className="flex flex-col items-center gap-1.5"
+        {/* Category */}
+        <div>
+          <label className="mb-2 block text-sm font-semibold text-ag-text">หมวดหมู่</label>
+          <div className="grid grid-cols-4 gap-3">
+            {categoryList.map((catId) => (
+              <button
+                key={catId}
+                onClick={() => setCategory(catId)}
+                className="flex flex-col items-center gap-1.5"
+              >
+                <div
+                  className={clsx(
+                    "flex h-14 w-14 items-center justify-center rounded-2xl transition-all",
+                    category === catId && "ring-2 ring-ag-blue ring-offset-2"
+                  )}
                 >
-                  <div
-                    className={clsx(
-                      "flex h-14 w-14 items-center justify-center rounded-2xl transition-all",
-                      category === catId && "ring-2 ring-ag-blue ring-offset-2"
-                    )}
-                  >
-                    <CategoryIcon category={catId} size={52} iconSize={24} />
-                  </div>
-                  <span className="text-center text-[11px] leading-tight text-ag-text-secondary">
-                    {CATEGORIES[catId].label}
-                  </span>
-                </button>
-              ))}
-            </div>
-            {errors.category && <p className="mt-2 text-xs font-semibold text-ag-coral">{errors.category}</p>}
+                  <CategoryIcon category={catId} size={52} iconSize={24} />
+                </div>
+                <span className="text-center text-[11px] leading-tight text-ag-text-secondary">
+                  {CATEGORIES[catId].label}
+                </span>
+              </button>
+            ))}
           </div>
-        )}
+          {errors.category && <p className="mt-2 text-xs font-semibold text-ag-coral">{errors.category}</p>}
+        </div>
+
+        {/* Date */}
+        <div>
+          <label className="mb-1.5 block text-sm font-semibold text-ag-text">วันที่</label>
+          <input
+            type="date"
+            value={dateStr}
+            max={toDateInputValue(new Date())}
+            onChange={(e) => setDateStr(e.target.value)}
+            className="h-12 w-full rounded-2xl border border-ag-grayblue bg-white px-4 text-sm text-ag-text outline-none focus:border-ag-blue"
+          />
+        </div>
 
         {/* Account */}
         <div>
@@ -187,6 +215,26 @@ export function TransactionForm({ type, title, restrictToAccountType }: Transact
             className="h-12 w-full rounded-2xl border border-ag-grayblue bg-white px-4 text-sm text-ag-text outline-none placeholder:text-ag-text-secondary/60 focus:border-ag-blue"
           />
         </div>
+
+        {/* Pending toggle */}
+        <label className="flex items-center justify-between gap-3 rounded-2xl border border-ag-grayblue bg-white px-4 py-3.5">
+          <span>
+            <span className="block text-sm font-semibold text-ag-text">
+              {type === "income" ? "ยังไม่ได้รับเงินจริง (รอยืนยัน)" : "ยังไม่ได้จ่ายจริง (ค้างจ่าย)"}
+            </span>
+            <span className="block text-xs text-ag-text-secondary">
+              {type === "income"
+                ? "เช่น ทำงานเสร็จแล้วแต่เงินยังไม่เข้าบัญชี"
+                : "เช่น ตกลงจะจ่ายแล้วแต่ยังไม่ได้โอน/จ่ายจริง"}
+            </span>
+          </span>
+          <input
+            type="checkbox"
+            checked={pending}
+            onChange={(e) => setPending(e.target.checked)}
+            className="h-5 w-5 shrink-0 accent-ag-blue"
+          />
+        </label>
 
         <Button variant="primary" size="lg" fullWidth onClick={handleSubmit} disabled={saving}>
           {saving ? "กำลังบันทึก..." : "บันทึกรายการ"}

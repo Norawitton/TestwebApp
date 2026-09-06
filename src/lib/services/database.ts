@@ -36,6 +36,8 @@ function rowToTransaction(row: any): Transaction {
     note: row.note ?? undefined,
     source: row.source,
     bank: row.bank ?? undefined,
+    // เผื่อคอลัมน์ status ยังไม่ถูกเพิ่มในบางฐานข้อมูล (ก่อนรัน migration v3)
+    status: row.status ?? "completed",
     createdAt: row.created_at,
   };
 }
@@ -56,24 +58,33 @@ export async function createTransaction(
 ): Promise<Transaction> {
   const userId = await getUserId();
   const id = uid("tx");
-  const { data, error } = await supabase
-    .from("transactions")
-    .insert({
-      id,
-      user_id: userId,
-      type: input.type,
-      amount: input.amount,
-      merchant: input.merchant,
-      category: input.category,
-      account_id: input.accountId,
-      date: input.date,
-      note: input.note,
-      source: input.source,
-      bank: input.bank,
-    })
-    .select()
-    .single();
-  if (error) throw error;
+  const row = {
+    id,
+    user_id: userId,
+    type: input.type,
+    amount: input.amount,
+    merchant: input.merchant,
+    category: input.category,
+    account_id: input.accountId,
+    date: input.date,
+    note: input.note,
+    source: input.source,
+    bank: input.bank,
+    status: input.status ?? "completed",
+  };
+  const { data, error } = await supabase.from("transactions").insert(row).select().single();
+  if (error) {
+    // เผื่อกรณียังไม่ได้รัน supabase-migration-v3.sql (คอลัมน์ status ยังไม่มี)
+    // ลองบันทึกใหม่โดยไม่ใส่ status เพื่อไม่ให้ฟีเจอร์เดิม (จดรายการ) ใช้งานไม่ได้
+    if (error.code === "42703" || error.message?.includes("status")) {
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      const { status: _status, ...rowWithoutStatus } = row;
+      const retry = await supabase.from("transactions").insert(rowWithoutStatus).select().single();
+      if (retry.error) throw retry.error;
+      return rowToTransaction(retry.data);
+    }
+    throw error;
+  }
   return rowToTransaction(data);
 }
 
@@ -93,6 +104,7 @@ export async function updateTransaction(
   if (patch.note !== undefined) rowPatch.note = patch.note;
   if (patch.source !== undefined) rowPatch.source = patch.source;
   if (patch.bank !== undefined) rowPatch.bank = patch.bank;
+  if (patch.status !== undefined) rowPatch.status = patch.status;
 
   const { data, error } = await supabase
     .from("transactions")
