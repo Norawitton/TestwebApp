@@ -27,6 +27,9 @@ interface AppData {
   editGoal: (id: string, patch: Partial<SavingGoal>) => Promise<void>;
   removeGoal: (id: string) => Promise<void>;
   saveProfile: (patch: Partial<UserProfile>) => Promise<void>;
+  addAccount: (input: Omit<Account, "id">) => Promise<void>;
+  editAccount: (id: string, patch: Partial<Omit<Account, "id">>) => Promise<void>;
+  removeAccount: (id: string) => Promise<void>;
 }
 
 export function useAppData(): AppData {
@@ -110,6 +113,21 @@ export function useAppData(): AppData {
     setProfile(next);
   }, []);
 
+  const addAccount = useCallback(async (input: Omit<Account, "id">) => {
+    await db.createAccount(input);
+    await refresh();
+  }, [refresh]);
+
+  const editAccount = useCallback(async (id: string, patch: Partial<Omit<Account, "id">>) => {
+    await db.updateAccount(id, patch);
+    await refresh();
+  }, [refresh]);
+
+  const removeAccount = useCallback(async (id: string) => {
+    await db.deleteFinancialAccount(id);
+    await refresh();
+  }, [refresh]);
+
   return {
     loading,
     transactions,
@@ -126,5 +144,8 @@ export function useAppData(): AppData {
     editGoal,
     removeGoal,
     saveProfile,
+    addAccount,
+    editAccount,
+    removeAccount,
   };
 }
