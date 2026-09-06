@@ -10,6 +10,7 @@ import {
   Transaction,
   UserProfile,
 } from "@/lib/types";
+import { currentMonthKey } from "@/lib/analytics";
 
 async function getUserId(): Promise<string> {
   const { data: { session } } = await supabase.auth.getSession();
@@ -120,14 +121,17 @@ export async function updateTransaction(
   return rowToTransaction(data);
 }
 
-export async function deleteTransaction(id: string): Promise<boolean> {
+export async function deleteTransaction(id: string): Promise<void> {
   const userId = await getUserId();
   const { error } = await supabase
     .from("transactions")
     .delete()
     .eq("id", id)
     .eq("user_id", userId);
-  return !error;
+  // เดิมคืน boolean เงียบๆ ตอน error ทำให้ swipe-to-delete ล้มเหลวแบบไม่มีใคร
+  // รู้ตัว — โยน error ออกไปให้ผู้เรียกจับได้จริง (เหมือนที่แก้ไปแล้วกับ
+  // updateTransaction/deleteFinancialAccount)
+  if (error) throw error;
 }
 
 // ---------------- Accounts ----------------
@@ -231,7 +235,12 @@ function rowToBudget(row: any): Budget {
 
 export async function getBudget(): Promise<Budget> {
   const userId = await getUserId();
-  const month = new Date().toISOString().slice(0, 7);
+  // เดิมใช้ .toISOString().slice(0, 7) ซึ่งเป็นเดือนแบบ UTC แต่ทุกหน้าที่ใช้
+  // งบ (Home/Budget/Analytics) กรองรายการด้วย currentMonthKey() ที่เป็นเดือน
+  // ตามเวลาท้องถิ่น — ช่วงเที่ยงคืนถึงเช้าตรู่ของวันที่ 1 ทุกเดือน (เวลาไทย
+  // UTC+7 ยังไม่ข้ามเดือนใน UTC) จะได้งบของเดือนก่อนหน้ามาเทียบกับยอดใช้จ่าย
+  // เดือนใหม่แบบผิดๆ ใช้ currentMonthKey() ให้ตรงกันแทน
+  const month = currentMonthKey();
 
   const { data } = await supabase
     .from("budgets")
@@ -354,14 +363,15 @@ export async function updateGoal(
   return rowToGoal(data);
 }
 
-export async function deleteGoal(id: string): Promise<boolean> {
+export async function deleteGoal(id: string): Promise<void> {
   const userId = await getUserId();
   const { error } = await supabase
     .from("saving_goals")
     .delete()
     .eq("id", id)
     .eq("user_id", userId);
-  return !error;
+  // เดิมคืน boolean เงียบๆ ตอน error ทำให้ลบเป้าหมายล้มเหลวแบบไม่มีใครรู้ตัว
+  if (error) throw error;
 }
 
 // ---------------- Profile ----------------
@@ -481,6 +491,9 @@ export async function resetAllData(): Promise<void> {
   const userId = await getUserId();
   await Promise.all([
     supabase.from("transactions").delete().eq("user_id", userId),
+    // เดิมไม่ได้ลบ accounts ด้วย ทำให้ "ลบข้อมูลทั้งหมด" ยังทิ้งบัญชี
+    // (เงินสด/บัตรเครดิต/ธนาคาร) ค้างไว้ในระบบ ทั้งที่ปุ่มบอกว่าลบข้อมูลทั้งหมด
+    supabase.from("accounts").delete().eq("user_id", userId),
     supabase.from("saving_goals").delete().eq("user_id", userId),
     supabase.from("budgets").delete().eq("user_id", userId),
   ]);
