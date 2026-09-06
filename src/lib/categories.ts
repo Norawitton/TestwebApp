@@ -99,6 +99,16 @@ export const CATEGORIES: Record<CategoryId, Category> = {
     color: "#EAF1F7",
     icon: "MoreHorizontal",
   },
+  // Chart-only slice for CategoryDonut — see the comment on CategoryId.
+  // Deliberately left out of EXPENSE_CATEGORY_LIST/INCOME_CATEGORY_LIST so
+  // it can never be picked when adding a transaction.
+  pending: {
+    id: "pending",
+    label: "รอยืนยัน",
+    labelEn: "Pending",
+    color: "#FFB020",
+    icon: "Clock",
+  },
 };
 
 export const EXPENSE_CATEGORY_LIST: CategoryId[] = [

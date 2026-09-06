@@ -13,12 +13,13 @@ import { TransactionRow } from "@/components/transactions/TransactionRow";
 import { IllustrationEmptyState } from "@/components/illustrations/Illustrations";
 import { useAppData } from "@/hooks/useAppData";
 import {
+  categoryBreakdownWithPending,
   currentMonthKey,
   filterByMonth,
   percentChange,
   previousMonthKey,
   sumByType,
-  topCategories,
+  sumPending,
 } from "@/lib/analytics";
 import { formatBaht, formatThaiMonthYear, percent, relativeDayLabel } from "@/lib/format";
 import { buildHomeInsight } from "@/lib/insights";
@@ -50,7 +51,10 @@ export default function HomePage() {
   const budgetRemaining = Math.max(0, budgetLimit - totalExpense);
   const usedPercent = percent(totalExpense, budgetLimit);
 
-  const catBreakdown = useMemo(() => topCategories(monthTx, 8), [monthTx]);
+  const catBreakdown = useMemo(() => categoryBreakdownWithPending(monthTx, 8), [monthTx]);
+  const pendingExpense = useMemo(() => sumPending(monthTx, "expense"), [monthTx]);
+  const pendingIncome = useMemo(() => sumPending(monthTx, "income"), [monthTx]);
+  const donutTotal = totalExpense + pendingExpense;
   const recentTx = transactions.slice(0, 6);
   const insight = useMemo(() => buildHomeInsight(transactions, budget), [transactions, budget]);
 
@@ -130,6 +134,11 @@ export default function HomePage() {
               ดูทั้งหมด <ChevronRight size={14} />
             </button>
           </div>
+          {pendingIncome > 0 && (
+            <p className="mb-3 rounded-xl bg-ag-yellow/20 px-3 py-2 text-xs font-semibold text-[#8a6d00]">
+              รายรับรอยืนยันอีก {formatBaht(pendingIncome)}
+            </p>
+          )}
           {catBreakdown.length === 0 ? (
             <div className="flex flex-col items-center gap-2 py-4">
               <IllustrationEmptyState size={120} />
@@ -137,9 +146,12 @@ export default function HomePage() {
             </div>
           ) : (
             <div className="flex items-center gap-4">
-              <CategoryDonut data={catBreakdown} total={totalExpense} size={140} />
+              <CategoryDonut data={catBreakdown} total={donutTotal} size={140} />
               <div className="flex flex-1 flex-col gap-2">
-                {catBreakdown.slice(0, 4).map((c) => (
+                {[
+                  ...catBreakdown.filter((c) => c.category !== "pending").slice(0, 4),
+                  ...catBreakdown.filter((c) => c.category === "pending"),
+                ].map((c) => (
                   <div key={c.category} className="flex items-center gap-2 text-xs">
                     <span
                       className="h-2.5 w-2.5 shrink-0 rounded-full"

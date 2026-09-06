@@ -12,6 +12,7 @@ import {
   Stethoscope,
   Briefcase,
   Gift,
+  Clock,
   LucideIcon,
 } from "lucide-react";
 
@@ -29,4 +30,5 @@ export const ICON_MAP: Record<string, LucideIcon> = {
   Stethoscope,
   Briefcase,
   Gift,
+  Clock,
 };
