@@ -42,8 +42,11 @@ export default function LoginPage() {
 
       <div className="mt-8 w-full ag-animate-slide-up">
         {/* Tab switcher */}
-        <div className="mb-6 flex rounded-2xl bg-white/60 p-1 shadow-sm">
+        <div role="tablist" aria-label="เข้าสู่ระบบหรือสมัครสมาชิก" className="mb-6 flex rounded-2xl bg-white/60 p-1 shadow-sm">
           <button
+            type="button"
+            role="tab"
+            aria-selected={mode === "login"}
             onClick={() => { setMode("login"); setError(""); }}
             className={`flex-1 rounded-xl py-2.5 text-sm font-bold transition-all ${
               mode === "login"
@@ -54,6 +57,9 @@ export default function LoginPage() {
             เข้าสู่ระบบ
           </button>
           <button
+            type="button"
+            role="tab"
+            aria-selected={mode === "signup"}
             onClick={() => { setMode("signup"); setError(""); }}
             className={`flex-1 rounded-xl py-2.5 text-sm font-bold transition-all ${
               mode === "signup"
@@ -67,8 +73,9 @@ export default function LoginPage() {
 
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">
           <div>
-            <label className="mb-1.5 block text-sm font-semibold text-ag-text">อีเมล</label>
+            <label htmlFor="login-email" className="mb-1.5 block text-sm font-semibold text-ag-text">อีเมล</label>
             <input
+              id="login-email"
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
@@ -80,8 +87,9 @@ export default function LoginPage() {
           </div>
 
           <div>
-            <label className="mb-1.5 block text-sm font-semibold text-ag-text">รหัสผ่าน</label>
+            <label htmlFor="login-password" className="mb-1.5 block text-sm font-semibold text-ag-text">รหัสผ่าน</label>
             <input
+              id="login-password"
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
@@ -94,7 +102,7 @@ export default function LoginPage() {
           </div>
 
           {error && (
-            <div className="rounded-2xl bg-ag-coral/10 px-4 py-3 text-sm text-ag-coral">
+            <div role="alert" className="rounded-2xl bg-ag-coral/10 px-4 py-3 text-sm text-ag-coral">
               {error}
             </div>
           )}

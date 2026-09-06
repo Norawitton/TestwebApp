@@ -85,7 +85,12 @@ export default function AnalyticsPage() {
           </Card>
           <Card padded={false} className="p-3.5 text-center">
             <p className="text-[11px] text-ag-text-secondary">เงินคงเหลือ</p>
-            <p className="ag-money mt-1 text-sm font-bold text-ag-text">{formatBaht(balance)}</p>
+            {/* formatBaht() ใช้ Math.abs() เสมอ และใส่เครื่องหมาย +/- ให้ก็ต่อ
+                เมื่อส่ง { sign: true } เท่านั้น — เดิมไม่ได้ส่ง ทำให้เงินคงเหลือ
+                ติดลบ (เช่น รายรับ 0 แต่มีรายจ่าย) โชว์เป็นตัวเลขบวกเฉยๆ */}
+            <p className={`ag-money mt-1 text-sm font-bold ${balance < 0 ? "text-ag-coral" : "text-ag-text"}`}>
+              {formatBaht(balance, { sign: true })}
+            </p>
           </Card>
         </div>
 
