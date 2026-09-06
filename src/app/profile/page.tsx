@@ -72,7 +72,15 @@ export default function ProfilePage() {
       <div className="flex flex-col gap-5 px-5 pt-5">
         {/* Accounts and credit cards */}
         <div>
-          <h2 className="mb-2 font-bold text-ag-text">บัญชีและบัตรเครดิต</h2>
+          <div className="mb-2 flex items-center justify-between">
+            <h2 className="font-bold text-ag-text">บัญชีและบัตรเครดิต</h2>
+            <button
+              onClick={() => router.push("/accounts")}
+              className="text-xs font-semibold text-ag-blue active:opacity-70"
+            >
+              จัดการ
+            </button>
+          </div>
           <div className="flex gap-3 overflow-x-auto ag-scrollbar-hide pb-1">
             {accounts
               .filter((a) => a.type === "credit_card")
@@ -82,6 +90,15 @@ export default function ProfilePage() {
                   <p className="mt-1 text-xs font-semibold text-ag-text">{a.name}</p>
                 </div>
               ))}
+            {accounts.filter((a) => a.type === "credit_card").length === 0 && (
+              <button
+                onClick={() => router.push("/accounts")}
+                className="flex h-[86px] w-[140px] shrink-0 flex-col items-center justify-center gap-1 rounded-2xl border border-dashed border-ag-grayblue text-ag-text-secondary active:bg-ag-grayblue/30"
+              >
+                <CreditCard size={20} color="#71818E" />
+                <span className="text-[11px] font-semibold">เพิ่มบัตรเครดิต</span>
+              </button>
+            )}
           </div>
           <div className="mt-2 flex flex-col gap-2">
             {accounts
@@ -112,7 +129,14 @@ export default function ProfilePage() {
                 />
               }
             />
-            <SettingsRow icon={CreditCard} label="จัดการบัญชีและบัตร" />
+            <button
+              onClick={() => router.push("/accounts")}
+              className="flex w-full items-center gap-3 px-4 py-3.5 text-left active:bg-ag-grayblue/40"
+            >
+              <CreditCard size={18} color="#71818E" />
+              <span className="flex-1 text-sm font-semibold text-ag-text">จัดการบัญชีและบัตร</span>
+              <ChevronRight size={16} color="#71818E" />
+            </button>
           </Card>
         </div>
 
