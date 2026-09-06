@@ -1,4 +1,6 @@
 import React, { useState, useEffect, useMemo, useRef } from "react";
+import { db } from "./firebase.js";
+import { ref, set, onValue, off } from "firebase/database";
 import {
   Home as HomeIcon, ShoppingCart, Calendar as CalendarIcon, Wallet,
   Plus, X, Check, Trash2, PenLine, ChevronLeft, ChevronRight,
@@ -87,7 +89,11 @@ function catInfo(id, type) {
   return list.find((c) => c.id === id) || { label: "อื่นๆ", icon: MoreHorizontal, color: COLORS.inkSoft };
 }
 
-// ---------- Storage (localStorage) ----------
+// ---------- Storage (localStorage + Firebase Realtime DB) ----------
+
+// Maps localStorage key → Firebase path segment (activeProfile stays local only)
+const FB_KEY = {};  // populated after KEYS is defined
+let _roomCode = null; // set once when room is established
 
 const KEYS = {
   profiles: "homie:profiles",
@@ -98,7 +104,17 @@ const KEYS = {
   moods: "homie:moods",
   transactions: "homie:transactions",
   budgets: "homie:budgets",
+  roomCode: "homie:room-code",
 };
+
+// Build Firebase path mapping (shared data only; activeProfile & roomCode stay local)
+FB_KEY[KEYS.profiles]     = "profiles";
+FB_KEY[KEYS.shopping]     = "shopping";
+FB_KEY[KEYS.events]       = "events";
+FB_KEY[KEYS.todos]        = "todos";
+FB_KEY[KEYS.moods]        = "moods";
+FB_KEY[KEYS.transactions] = "transactions";
+FB_KEY[KEYS.budgets]      = "budgets";
 
 function loadJSON(key, fallback) {
   try {
@@ -116,6 +132,11 @@ function saveJSON(key, value) {
     localStorage.setItem(key, JSON.stringify(value));
   } catch (e) {
     console.error("save failed", key, e);
+  }
+  // Sync shared data to Firebase when a room is active
+  const fbPath = FB_KEY[key];
+  if (_roomCode && fbPath) {
+    set(ref(db, `rooms/${_roomCode}/${fbPath}`), value).catch(console.error);
   }
 }
 
@@ -1739,10 +1760,108 @@ function BudgetPanel({ budgets, onSave, spentByCategory }) {
 }
 
 // =========================================================================
+// ROOM SETUP — shown once before anything else (creates / joins a shared room)
+// =========================================================================
+
+function RoomSetup({ onSetup }) {
+  const [mode, setMode] = useState(null); // null | 'create' | 'join'
+  const [code, setCode] = useState("");
+  const [err, setErr] = useState("");
+
+  const handleCreate = () => {
+    const newCode = Math.random().toString(36).slice(2, 8).toUpperCase();
+    onSetup(newCode);
+  };
+
+  const handleJoin = () => {
+    const trimmed = code.trim().toUpperCase();
+    if (trimmed.length < 4) { setErr("กรุณากรอกรหัสให้ครบ"); return; }
+    onSetup(trimmed);
+  };
+
+  const card = {
+    background: COLORS.surface,
+    borderRadius: 20,
+    padding: "28px 24px",
+    boxShadow: COLORS.shadow,
+    marginBottom: 16,
+    cursor: "pointer",
+    border: `2px solid ${COLORS.line}`,
+    textAlign: "left",
+  };
+
+  return (
+    <div style={{ minHeight: "100vh", background: COLORS.bg, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: 24, fontFamily: FONT_SANS }}>
+      <div style={{ fontSize: 56, marginBottom: 12 }}>🏠</div>
+      <div style={{ fontFamily: FONT_SERIF, fontSize: 26, fontWeight: 700, color: COLORS.ink, marginBottom: 6 }}>Homie</div>
+      <div style={{ color: COLORS.inkSoft, fontSize: 15, marginBottom: 36, textAlign: "center" }}>แอปจัดการบ้านสำหรับสองคน</div>
+
+      {!mode && (
+        <div style={{ width: "100%", maxWidth: 340 }}>
+          <div style={card} onClick={handleCreate}>
+            <div style={{ fontSize: 22, marginBottom: 6 }}>✨ สร้างบ้านใหม่</div>
+            <div style={{ color: COLORS.inkSoft, fontSize: 14 }}>สร้างรหัสบ้านใหม่ แล้วแชร์ให้อีกคนเข้าร่วม</div>
+          </div>
+          <div style={{ ...card, marginBottom: 0 }} onClick={() => setMode("join")}>
+            <div style={{ fontSize: 22, marginBottom: 6 }}>🔑 เข้าร่วมบ้าน</div>
+            <div style={{ color: COLORS.inkSoft, fontSize: 14 }}>มีรหัสบ้านจากอีกคนแล้ว กรอกเพื่อเข้าร่วม</div>
+          </div>
+        </div>
+      )}
+
+      {mode === "join" && (
+        <div style={{ width: "100%", maxWidth: 340 }}>
+          <div style={{ color: COLORS.inkSoft, fontSize: 14, marginBottom: 10 }}>กรอกรหัสบ้านที่ได้รับมา</div>
+          <input
+            autoFocus
+            value={code}
+            onChange={e => { setCode(e.target.value.toUpperCase()); setErr(""); }}
+            placeholder="เช่น  AB12CD"
+            style={{ width: "100%", padding: "14px 16px", fontSize: 22, fontWeight: 700, letterSpacing: 4, textAlign: "center", border: `2px solid ${err ? COLORS.owed : COLORS.line}`, borderRadius: 14, outline: "none", background: COLORS.surface, color: COLORS.ink, marginBottom: 8, boxSizing: "border-box" }}
+          />
+          {err && <div style={{ color: COLORS.owed, fontSize: 13, marginBottom: 8 }}>{err}</div>}
+          <button onClick={handleJoin} style={{ width: "100%", padding: "14px 0", background: COLORS.brand, color: "#fff", border: "none", borderRadius: 14, fontSize: 16, fontWeight: 700, cursor: "pointer", marginBottom: 12 }}>เข้าร่วม</button>
+          <button onClick={() => { setMode(null); setCode(""); setErr(""); }} style={{ width: "100%", padding: "12px 0", background: "transparent", color: COLORS.inkSoft, border: "none", fontSize: 14, cursor: "pointer" }}>← ย้อนกลับ</button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// =========================================================================
+// PROFILE PICKER — shown on a new device when room already has profiles
+// =========================================================================
+
+function ProfilePicker({ profiles, onPick }) {
+  return (
+    <div style={{ minHeight: "100vh", background: COLORS.bg, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: 24, fontFamily: FONT_SANS }}>
+      <div style={{ fontSize: 48, marginBottom: 12 }}>👋</div>
+      <div style={{ fontFamily: FONT_SERIF, fontSize: 22, fontWeight: 700, color: COLORS.ink, marginBottom: 8 }}>คุณเป็นใคร?</div>
+      <div style={{ color: COLORS.inkSoft, fontSize: 15, marginBottom: 32 }}>เลือกโปรไฟล์ของคุณ</div>
+      <div style={{ width: "100%", maxWidth: 320 }}>
+        {profiles.map(p => (
+          <button
+            key={p.id}
+            onClick={() => onPick(p.id)}
+            style={{ width: "100%", display: "flex", alignItems: "center", gap: 16, padding: "18px 20px", background: COLORS.surface, border: `2px solid ${COLORS.line}`, borderRadius: 18, marginBottom: 12, cursor: "pointer", boxShadow: COLORS.shadow }}
+          >
+            <div style={{ width: 48, height: 48, borderRadius: "50%", background: p.color, display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontSize: 20, fontWeight: 700, flexShrink: 0 }}>
+              {p.name.charAt(0)}
+            </div>
+            <div style={{ fontFamily: FONT_SERIF, fontSize: 18, fontWeight: 700, color: COLORS.ink }}>{p.name}</div>
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// =========================================================================
 // MAIN APP
 // =========================================================================
 
 export default function App() {
+  const [roomCode, setRoomCode] = useState(() => loadJSON(KEYS.roomCode, null));
   const [loading, setLoading] = useState(true);
   const [profiles, setProfiles] = useState(null);
   const [activeId, setActiveId] = useState(null);
@@ -1755,36 +1874,56 @@ export default function App() {
   const [transactions, setTransactions] = useState([]);
   const [budgets, setBudgets] = useState({});
 
+  // Firebase real-time listener — runs whenever roomCode changes
   useEffect(() => {
-    // Load all data synchronously from localStorage on mount
-    const p = loadJSON(KEYS.profiles, null);
-    const active = loadJSON(KEYS.activeProfile, null);
-    const s = loadJSON(KEYS.shopping, []);
-    const e = loadJSON(KEYS.events, []);
-    const td = loadJSON(KEYS.todos, []);
-    const m = loadJSON(KEYS.moods, []);
-    const t = loadJSON(KEYS.transactions, []);
-    const b = loadJSON(KEYS.budgets, {});
+    if (!roomCode) { setLoading(false); return; }
+    _roomCode = roomCode; // enable Firebase writes in saveJSON
 
-    setProfiles(p);
-    setActiveId(active || (p && p[0]?.id) || null);
-    setShopping(s);
-    setEvents(e);
-    setTodos(td);
-    setMoods(m);
-    setTransactions(t);
-    setBudgets(b);
-    setLoading(false);
-  }, []);
+    const roomRef = ref(db, `rooms/${roomCode}`);
+    onValue(roomRef, (snap) => {
+      const data = snap.val() || {};
+      setProfiles(data.profiles ?? null);
+      // activeProfile stays local (per device)
+      setActiveId(prev => prev || loadJSON(KEYS.activeProfile, null) || data.profiles?.[0]?.id || null);
+      setShopping(data.shopping ?? []);
+      setEvents(data.events ?? []);
+      setTodos(data.todos ?? []);
+      setMoods(data.moods ?? []);
+      setTransactions(data.transactions ?? []);
+      setBudgets(data.budgets ?? {});
+      setLoading(false);
+    }, (err) => { console.error("Firebase error:", err); setLoading(false); });
+
+    return () => off(roomRef);
+  }, [roomCode]);
+
+  const handleRoomSetup = (code) => {
+    localStorage.setItem(KEYS.roomCode, JSON.stringify(code));
+    setRoomCode(code);
+    setLoading(true);
+  };
 
   const handleOnboardingComplete = (newProfiles) => {
     setProfiles(newProfiles);
     setActiveId(newProfiles[0].id);
-    saveJSON(KEYS.profiles, newProfiles);
-    saveJSON(KEYS.activeProfile, newProfiles[0].id);
+    saveJSON(KEYS.profiles, newProfiles);         // → Firebase + localStorage
+    saveJSON(KEYS.activeProfile, newProfiles[0].id); // → localStorage only (not in FB_KEY)
   };
 
-  const switchProfile = (id) => { setActiveId(id); saveJSON(KEYS.activeProfile, id); };
+  const switchProfile = (id) => {
+    setActiveId(id);
+    try { localStorage.setItem(KEYS.activeProfile, JSON.stringify(id)); } catch {}
+  };
+
+  // ── Step 1: No room code yet ──────────────────────────────────────────────
+  if (!roomCode) {
+    return (
+      <>
+        <FontLoader />
+        <RoomSetup onSetup={handleRoomSetup} />
+      </>
+    );
+  }
 
   if (loading) {
     return (
@@ -1794,11 +1933,25 @@ export default function App() {
     );
   }
 
+  // ── Step 2: Room exists but no profiles yet → create household ───────────
   if (!profiles || profiles.length < 2) {
     return (
       <>
         <FontLoader />
         <Onboarding onComplete={handleOnboardingComplete} />
+      </>
+    );
+  }
+
+  // ── Step 3: Profiles exist but this device hasn't picked one ────────────
+  if (!activeId || !profiles.find(p => p.id === activeId)) {
+    return (
+      <>
+        <FontLoader />
+        <ProfilePicker profiles={profiles} onPick={(id) => {
+          setActiveId(id);
+          try { localStorage.setItem(KEYS.activeProfile, JSON.stringify(id)); } catch {}
+        }} />
       </>
     );
   }
@@ -1824,7 +1977,10 @@ export default function App() {
       <FontLoader />
       <div style={{ maxWidth: 720, margin: "0 auto", padding: "20px 16px 96px" }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
-          <h1 style={{ fontFamily: FONT_SERIF, fontSize: 24, fontWeight: 700, color: COLORS.brand, margin: 0 }}>Homie</h1>
+          <div>
+            <h1 style={{ fontFamily: FONT_SERIF, fontSize: 24, fontWeight: 700, color: COLORS.brand, margin: 0 }}>Homie</h1>
+            <div style={{ fontSize: 11, color: COLORS.inkFaint, marginTop: 2 }}>🏠 {roomCode}</div>
+          </div>
           <ProfileSwitcher profiles={profiles} activeId={activeId} onSwitch={switchProfile} />
         </div>
 
