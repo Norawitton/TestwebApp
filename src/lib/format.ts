@@ -92,6 +92,17 @@ export function monthKeyOf(iso: string): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
 }
 
+// "YYYY-MM-DD" ตามเวลาท้องถิ่นของเครื่อง — ใช้จัดกลุ่มรายการตามวัน แทนการตัด
+// สตริง ISO ตรงๆ (iso.slice(0,10)) ซึ่งเป็นวันที่แบบ UTC และจะผิดวันสำหรับ
+// รายการที่บันทึกช่วงเที่ยงคืนถึงเช้าตรู่ตามเวลาไทย (UTC+7)
+export function localDateKey(iso: string): string {
+  const d = new Date(iso);
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}
+
 export function percent(part: number, whole: number): number {
   if (whole <= 0) return 0;
   return Math.min(100, Math.round((part / whole) * 100));

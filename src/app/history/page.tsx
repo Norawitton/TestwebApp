@@ -10,7 +10,7 @@ import { IllustrationEmptyState } from "@/components/illustrations/Illustrations
 import { useAppData } from "@/hooks/useAppData";
 import { CategoryId, Transaction, TransactionType } from "@/lib/types";
 import { CATEGORIES, EXPENSE_CATEGORY_LIST, INCOME_CATEGORY_LIST } from "@/lib/categories";
-import { formatBaht, relativeDayLabel, formatThaiTime } from "@/lib/format";
+import { formatBaht, relativeDayLabel, formatThaiTime, localDateKey } from "@/lib/format";
 import { clsx } from "clsx";
 
 type TabFilter = "all" | "expense" | "income";
@@ -37,7 +37,7 @@ export default function HistoryPage() {
   const grouped = useMemo(() => {
     const map = new Map<string, Transaction[]>();
     filtered.forEach((t) => {
-      const key = t.date.slice(0, 10);
+      const key = localDateKey(t.date);
       const arr = map.get(key) ?? [];
       arr.push(t);
       map.set(key, arr);
@@ -157,7 +157,9 @@ export default function HistoryPage() {
                     tx={tx}
                     swiped={swipedId === tx.id}
                     onSwipe={() => setSwipedId(swipedId === tx.id ? null : tx.id)}
-                    onDelete={() => removeTransaction(tx.id)}
+                    onDelete={() =>
+                      removeTransaction(tx.id).catch((err) => console.error("ลบรายการไม่สำเร็จ:", err))
+                    }
                     onConfirm={() =>
                       editTransaction(tx.id, { status: "completed" }).catch((err) =>
                         console.error("ยืนยันรายการไม่สำเร็จ:", err)

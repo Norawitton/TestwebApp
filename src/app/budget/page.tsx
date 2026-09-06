@@ -254,7 +254,11 @@ export default function BudgetPage() {
                       {formatBaht(g.currentAmount)} จาก {formatBaht(g.targetAmount)}
                     </p>
                   </div>
-                  <button onClick={() => removeGoal(g.id)} aria-label="ลบเป้าหมาย" className="text-ag-text-secondary">
+                  <button
+                    onClick={() => removeGoal(g.id).catch((err) => console.error("ลบเป้าหมายไม่สำเร็จ:", err))}
+                    aria-label="ลบเป้าหมาย"
+                    className="text-ag-text-secondary"
+                  >
                     <X size={16} />
                   </button>
                 </div>

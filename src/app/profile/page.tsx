@@ -27,6 +27,7 @@ export default function ProfilePage() {
   const { profile, accounts, saveProfile } = useAppData();
   const [exporting, setExporting] = useState(false);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
+  const [confirmingDeleteAccount, setConfirmingDeleteAccount] = useState(false);
 
   async function handleExport() {
     setExporting(true);
@@ -184,7 +185,7 @@ export default function ProfilePage() {
               <span className="flex-1 text-sm font-semibold text-ag-coral">ลบข้อมูลทั้งหมด</span>
             </button>
             <button
-              onClick={handleDeleteAccount}
+              onClick={() => setConfirmingDeleteAccount(true)}
               className="flex w-full items-center gap-3 px-4 py-3.5 text-left active:bg-ag-grayblue/40"
             >
               <Trash2 size={18} color="#F36B5F" />
@@ -200,7 +201,7 @@ export default function ProfilePage() {
             <Mascot pose="worried" size={72} />
             <h3 className="mt-3 text-lg font-bold text-ag-text">ยืนยันการลบข้อมูล?</h3>
             <p className="mt-1 text-sm text-ag-text-secondary">
-              รายการ งบประมาณ และเป้าหมายทั้งหมดจะถูกลบและไม่สามารถกู้คืนได้
+              รายการ บัญชี งบประมาณ และเป้าหมายทั้งหมดจะถูกลบและไม่สามารถกู้คืนได้ (บัญชีผู้ใช้ของคุณจะยังอยู่ ไม่ถูกออกจากระบบ)
             </p>
             <div className="mt-5 flex gap-3">
               <button
@@ -214,6 +215,33 @@ export default function ProfilePage() {
                 className="h-12 flex-1 rounded-2xl bg-ag-coral text-sm font-bold text-white"
               >
                 ลบข้อมูล
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {confirmingDeleteAccount && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-ag-navy/50 px-8">
+          <div className="w-full max-w-sm rounded-[24px] bg-white p-6 text-center ag-animate-slide-up">
+            <Mascot pose="worried" size={72} />
+            <h3 className="mt-3 text-lg font-bold text-ag-text">ยืนยันการลบบัญชีผู้ใช้?</h3>
+            <p className="mt-1 text-sm text-ag-text-secondary">
+              ข้อมูลทั้งหมดของคุณ (รายการ, บัญชี, งบประมาณ, เป้าหมาย) รวมถึงตัวบัญชีผู้ใช้เองจะถูกลบถาวร
+              และคุณจะถูกออกจากระบบทันที — กู้คืนไม่ได้
+            </p>
+            <div className="mt-5 flex gap-3">
+              <button
+                onClick={() => setConfirmingDeleteAccount(false)}
+                className="h-12 flex-1 rounded-2xl bg-ag-grayblue text-sm font-bold text-ag-text"
+              >
+                ยกเลิก
+              </button>
+              <button
+                onClick={handleDeleteAccount}
+                className="h-12 flex-1 rounded-2xl bg-ag-coral text-sm font-bold text-white"
+              >
+                ลบบัญชีผู้ใช้
               </button>
             </div>
           </div>
