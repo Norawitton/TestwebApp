@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <!-- Background circle -->
+  <circle cx="256" cy="256" r="256" fill="#FF8C5A"/>
+  <!-- House shape -->
+  <g transform="translate(256,256)">
+    <!-- Roof -->
+    <polygon points="0,-110 -120,-10 120,-10" fill="#FFFFFF" opacity="0.95"/>
+    <!-- Chimney -->
+    <rect x="60" y="-115" width="28" height="60" rx="4" fill="#FFFFFF" opacity="0.9"/>
+    <!-- House body -->
+    <rect x="-95" y="-10" width="190" height="130" rx="8" fill="#FFFFFF" opacity="0.95"/>
+    <!-- Door -->
+    <rect x="-28" y="45" width="56" height="75" rx="10" fill="#FF8C5A"/>
+    <!-- Door knob -->
+    <circle cx="22" cy="85" r="5" fill="#FFFFFF"/>
+    <!-- Left window -->
+    <rect x="-82" y="15" width="44" height="40" rx="6" fill="#FFE4D3"/>
+    <!-- Right window -->
+    <rect x="38" y="15" width="44" height="40" rx="6" fill="#FFE4D3"/>
+    <!-- Window cross left -->
+    <line x1="-60" y1="15" x2="-60" y2="55" stroke="#FF8C5A" stroke-width="3"/>
+    <line x1="-82" y1="35" x2="-38" y2="35" stroke="#FF8C5A" stroke-width="3"/>
+    <!-- Window cross right -->
+    <line x1="60" y1="15" x2="60" y2="55" stroke="#FF8C5A" stroke-width="3"/>
+    <line x1="38" y1="35" x2="82" y2="35" stroke="#FF8C5A" stroke-width="3"/>
+    <!-- Heart (love/couple symbol) -->
+    <path d="M0,140 C-8,130 -26,122 -26,108 C-26,99 -19,92 -10,92 C-5,92 0,96 0,96 C0,96 5,92 10,92 C19,92 26,99 26,108 C26,122 8,130 0,140Z" fill="#FF6B8A"/>
+  </g>
+</svg>
