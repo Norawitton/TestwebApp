@@ -213,7 +213,14 @@ export async function exportTransactionsCsv(): Promise<string> {
 
 export async function resetAllData(): Promise<void> {
   if (!isBrowser()) return;
+  // ลบข้อมูลทั้งหมด
   Object.values(KEYS).forEach((k) => window.localStorage.removeItem(k));
+  // ตั้ง seeded = "1" ทันที เพื่อกัน ensureSeeded() นำ mock data กลับมา
+  window.localStorage.setItem(KEYS.seeded, "1");
+  // เริ่มต้นด้วย collections ว่างเปล่า
+  write(KEYS.transactions, []);
+  write(KEYS.accounts, []);
+  write(KEYS.goals, []);
 }
 
 export async function deleteAccount(): Promise<void> {
