@@ -10,12 +10,14 @@ import { CategoryIcon } from "@/components/ui/CategoryIcon";
 import { MascotTipCard } from "@/components/ui/MascotTipCard";
 import { useAppData } from "@/hooks/useAppData";
 import {
+  categoryBreakdownWithPending,
   currentMonthKey,
   dailySpendSeries,
   filterByMonth,
   monthlyComparisonSeries,
   recurringMerchants,
   sumByType,
+  sumPending,
   topCategories,
   topMerchants,
 } from "@/lib/analytics";
@@ -37,6 +39,9 @@ export default function AnalyticsPage() {
   const comparison = useMemo(() => monthlyComparisonSeries(transactions, 6), [transactions]);
   const catBreakdown = useMemo(() => topCategories(monthTx, 8), [monthTx]);
   const top3 = catBreakdown.slice(0, 3);
+  const donutBreakdown = useMemo(() => categoryBreakdownWithPending(monthTx, 8), [monthTx]);
+  const pendingExpense = useMemo(() => sumPending(monthTx, "expense"), [monthTx]);
+  const pendingIncome = useMemo(() => sumPending(monthTx, "income"), [monthTx]);
   const merchants = useMemo(() => topMerchants(monthTx, 5), [monthTx]);
   const recurring = useMemo(() => recurringMerchants(transactions), [transactions]);
   const insights = useMemo(() => buildAnalyticsInsights(transactions, null), [transactions]);
@@ -63,10 +68,20 @@ export default function AnalyticsPage() {
           <Card padded={false} className="p-3.5 text-center">
             <p className="text-[11px] text-ag-text-secondary">รายจ่ายรวม</p>
             <p className="ag-money mt-1 text-sm font-bold text-ag-coral">{formatBaht(totalExpense)}</p>
+            {pendingExpense > 0 && (
+              <p className="ag-money mt-0.5 text-[10px] font-semibold text-[#8a6d00]">
+                +รอยืนยัน {formatBaht(pendingExpense)}
+              </p>
+            )}
           </Card>
           <Card padded={false} className="p-3.5 text-center">
             <p className="text-[11px] text-ag-text-secondary">รายรับรวม</p>
             <p className="ag-money mt-1 text-sm font-bold text-ag-green">{formatBaht(totalIncome)}</p>
+            {pendingIncome > 0 && (
+              <p className="ag-money mt-0.5 text-[10px] font-semibold text-[#8a6d00]">
+                +รอยืนยัน {formatBaht(pendingIncome)}
+              </p>
+            )}
           </Card>
           <Card padded={false} className="p-3.5 text-center">
             <p className="text-[11px] text-ag-text-secondary">เงินคงเหลือ</p>
@@ -105,9 +120,12 @@ export default function AnalyticsPage() {
         <Card>
           <h2 className="mb-3 font-bold text-ag-text">สัดส่วนตามหมวดหมู่</h2>
           <div className="flex items-center gap-4">
-            <CategoryDonut data={catBreakdown} total={totalExpense} size={140} />
+            <CategoryDonut data={donutBreakdown} total={totalExpense + pendingExpense} size={140} />
             <div className="flex flex-1 flex-col gap-2">
-              {catBreakdown.slice(0, 5).map((c) => (
+              {[
+                ...donutBreakdown.filter((c) => c.category !== "pending").slice(0, 5),
+                ...donutBreakdown.filter((c) => c.category === "pending"),
+              ].map((c) => (
                 <div key={c.category} className="flex items-center gap-2 text-xs">
                   <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ backgroundColor: CATEGORIES[c.category].color }} />
                   <span className="flex-1 truncate text-ag-text-secondary">{CATEGORIES[c.category].label}</span>

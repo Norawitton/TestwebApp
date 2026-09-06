@@ -47,6 +47,25 @@ export function topCategories(transactions: Transaction[], n = 3): { category: C
     .slice(0, n);
 }
 
+// รวมยอดรายการที่ยังเป็น "pending" (ตรงข้ามกับ isConfirmed ด้านบน) — ใช้แสดง
+// ให้ผู้ใช้เห็นว่ามีเงินรอยืนยันอยู่เท่าไหร่ ไม่ได้เอาไปรวมกับยอดจริง
+export function sumPending(transactions: Transaction[], type: "expense" | "income"): number {
+  return transactions
+    .filter((t) => t.type === type && t.status === "pending")
+    .reduce((s, t) => s + t.amount, 0);
+}
+
+// เหมือน topCategories แต่แถมสไลซ์ "รอยืนยัน" ต่อท้ายถ้ามีรายจ่าย pending
+// อยู่ในเดือนนั้น เพื่อให้ CategoryDonut แสดงสัดส่วนเงินที่ยังไม่ยืนยันด้วย
+export function categoryBreakdownWithPending(
+  transactions: Transaction[],
+  n = 8
+): { category: CategoryId; amount: number }[] {
+  const confirmed = topCategories(transactions, n);
+  const pending = sumPending(transactions, "expense");
+  return pending > 0 ? [...confirmed, { category: "pending" as CategoryId, amount: pending }] : confirmed;
+}
+
 export function topMerchants(transactions: Transaction[], n = 5): { merchant: string; amount: number; count: number }[] {
   const map = new Map<string, { amount: number; count: number }>();
   transactions
