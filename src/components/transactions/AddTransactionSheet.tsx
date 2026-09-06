@@ -1,6 +1,6 @@
 "use client";
 
-import { Camera, Upload, MinusCircle, PlusCircle, CreditCard, X } from "lucide-react";
+import { MinusCircle, PlusCircle, CreditCard, X } from "lucide-react";
 
 interface AddTransactionSheetProps {
   open: boolean;
@@ -9,22 +9,6 @@ interface AddTransactionSheetProps {
 }
 
 const OPTIONS = [
-  {
-    icon: Camera,
-    label: "ถ่ายภาพสลิป",
-    desc: "ถ่ายสลิปแล้วให้น้องออมอ่านให้",
-    path: "/scan?mode=camera",
-    bg: "#FFD64F",
-    fg: "#00233D",
-  },
-  {
-    icon: Upload,
-    label: "อัปโหลดสลิป",
-    desc: "เลือกรูปสลิปจากเครื่อง",
-    path: "/scan?mode=upload",
-    bg: "#EAF1F7",
-    fg: "#1689F5",
-  },
   {
     icon: MinusCircle,
     label: "เพิ่มรายจ่ายเอง",

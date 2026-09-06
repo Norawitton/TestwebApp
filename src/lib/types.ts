@@ -55,7 +55,7 @@ export interface Transaction {
   accountId: string;
   date: string; // ISO 8601
   note?: string;
-  source: "manual" | "slip_scan" | "credit_card";
+  source: "manual" | "credit_card";
   bank?: BankId;
   createdAt: string;
 }
@@ -96,16 +96,6 @@ export interface UserProfile {
   onboarded: boolean;
 }
 
-export interface SlipOcrResult {
-  amount: number;
-  date: string;
-  time: string;
-  merchant: string;
-  bank: BankId;
-  suggestedCategory: CategoryId;
-  refNumber?: string;
-  confidence: number; // 0-1
-}
 
 export interface MascotTip {
   id: string;
