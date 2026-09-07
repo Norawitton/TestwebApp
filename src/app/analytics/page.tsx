@@ -125,11 +125,19 @@ export default function AnalyticsPage() {
         <Card>
           <h2 className="mb-3 font-bold text-ag-text">สัดส่วนตามหมวดหมู่</h2>
           <div className="flex items-center gap-4">
-            <CategoryDonut data={donutBreakdown} total={totalExpense + pendingExpense} size={140} />
+            <CategoryDonut
+              data={donutBreakdown}
+              total={totalExpense + pendingExpense + totalIncome}
+              size={140}
+            />
             <div className="flex flex-1 flex-col gap-2">
               {[
-                ...donutBreakdown.filter((c) => c.category !== "pending").slice(0, 5),
-                ...donutBreakdown.filter((c) => c.category === "pending"),
+                ...donutBreakdown
+                  .filter((c) => c.category !== "pending" && c.category !== "incomeTotal")
+                  .slice(0, 5),
+                ...donutBreakdown.filter(
+                  (c) => c.category === "incomeTotal" || c.category === "pending"
+                ),
               ].map((c) => (
                 <div key={c.category} className="flex items-center gap-2 text-xs">
                   <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ backgroundColor: CATEGORIES[c.category].color }} />
