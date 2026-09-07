@@ -14,16 +14,18 @@ export type CategoryId =
   | "education"
   | "investment"
   | "clinic"
+  | "sports"
   | "salary"
   | "freelance"
   | "gift"
   | "income"
   | "other"
-  // "pending" is chart-only — it's never assigned to a real transaction's
-  // `category`. It lets CategoryDonut render a distinct slice for the total
-  // amount still awaiting confirmation, reusing the same {category, amount}
-  // shape as every other slice.
-  | "pending";
+  // "pending" and "incomeTotal" are chart-only — never assigned to a real
+  // transaction's `category`. They let CategoryDonut render a distinct
+  // slice for money still awaiting confirmation, or for total income,
+  // reusing the same {category, amount} shape as every other slice.
+  | "pending"
+  | "incomeTotal";
 
 export interface Category {
   id: CategoryId;

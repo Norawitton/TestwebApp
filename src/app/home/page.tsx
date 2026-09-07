@@ -56,7 +56,8 @@ export default function HomePage() {
   const catBreakdown = useMemo(() => categoryBreakdownWithPending(monthTx, 8), [monthTx]);
   const pendingExpense = useMemo(() => sumPending(monthTx, "expense"), [monthTx]);
   const pendingIncome = useMemo(() => sumPending(monthTx, "income"), [monthTx]);
-  const donutTotal = totalExpense + pendingExpense;
+  const income = useMemo(() => sumByType(monthTx, "income"), [monthTx]);
+  const donutTotal = totalExpense + pendingExpense + income;
   const recentTx = transactions.slice(0, 6);
   const insight = useMemo(() => buildHomeInsight(transactions, budget), [transactions, budget]);
   const isNewUser = transactions.length === 0;
@@ -198,8 +199,12 @@ export default function HomePage() {
               <CategoryDonut data={catBreakdown} total={donutTotal} size={140} />
               <div className="flex flex-1 flex-col gap-2">
                 {[
-                  ...catBreakdown.filter((c) => c.category !== "pending").slice(0, 4),
-                  ...catBreakdown.filter((c) => c.category === "pending"),
+                  ...catBreakdown
+                    .filter((c) => c.category !== "pending" && c.category !== "incomeTotal")
+                    .slice(0, 4),
+                  ...catBreakdown.filter(
+                    (c) => c.category === "incomeTotal" || c.category === "pending"
+                  ),
                 ].map((c) => (
                   <div key={c.category} className="flex items-center gap-2 text-xs">
                     <span

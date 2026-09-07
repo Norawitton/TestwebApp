@@ -64,6 +64,13 @@ export const CATEGORIES: Record<CategoryId, Category> = {
     color: "#0B8342",
     icon: "Stethoscope",
   },
+  sports: {
+    id: "sports",
+    label: "กีฬา",
+    labelEn: "Sports",
+    color: "#E91E63",
+    icon: "Dumbbell",
+  },
   salary: {
     id: "salary",
     label: "เงินเดือน",
@@ -109,6 +116,15 @@ export const CATEGORIES: Record<CategoryId, Category> = {
     color: "#FFB020",
     icon: "Clock",
   },
+  // เช่นเดียวกับ pending — ใช้ในกราฟโดนัทเท่านั้น เพื่อโชว์ยอดรายรับรวม
+  // เป็นอีกสไลซ์นึงในวงเดียวกับรายจ่ายแยกหมวด
+  incomeTotal: {
+    id: "incomeTotal",
+    label: "รายรับ",
+    labelEn: "Income",
+    color: "#14B8A6",
+    icon: "Wallet",
+  },
 };
 
 export const EXPENSE_CATEGORY_LIST: CategoryId[] = [
@@ -121,6 +137,7 @@ export const EXPENSE_CATEGORY_LIST: CategoryId[] = [
   "education",
   "investment",
   "clinic",
+  "sports",
   "other",
 ];
 

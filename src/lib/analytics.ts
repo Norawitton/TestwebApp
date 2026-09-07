@@ -63,15 +63,20 @@ export function sumPending(transactions: Transaction[], type: "expense" | "incom
     .reduce((s, t) => s + t.amount, 0);
 }
 
-// เหมือน topCategories แต่แถมสไลซ์ "รอยืนยัน" ต่อท้ายถ้ามีรายจ่าย pending
-// อยู่ในเดือนนั้น เพื่อให้ CategoryDonut แสดงสัดส่วนเงินที่ยังไม่ยืนยันด้วย
+// เหมือน topCategories แต่แถมสไลซ์ "รายรับ" (ยอดรายรับรวมทั้งเดือน) และ
+// "รอยืนยัน" (รายจ่าย pending) ต่อท้าย เพื่อให้ CategoryDonut แสดงทั้งรายจ่าย
+// แยกหมวด, ยอดรายรับ, และเงินที่ยังไม่ยืนยัน อยู่ในวงเดียวกัน
 export function categoryBreakdownWithPending(
   transactions: Transaction[],
   n = 8
 ): { category: CategoryId; amount: number }[] {
   const confirmed = topCategories(transactions, n);
+  const income = sumByType(transactions, "income");
   const pending = sumPending(transactions, "expense");
-  return pending > 0 ? [...confirmed, { category: "pending" as CategoryId, amount: pending }] : confirmed;
+  const result = [...confirmed];
+  if (income > 0) result.push({ category: "incomeTotal", amount: income });
+  if (pending > 0) result.push({ category: "pending", amount: pending });
+  return result;
 }
 
 export function topMerchants(transactions: Transaction[], n = 5): { merchant: string; amount: number; count: number }[] {
