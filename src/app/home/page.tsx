@@ -58,6 +58,9 @@ export default function HomePage() {
   const pendingIncome = useMemo(() => sumPending(monthTx, "income"), [monthTx]);
   const income = useMemo(() => sumByType(monthTx, "income"), [monthTx]);
   const donutTotal = totalExpense + pendingExpense + income;
+  // ตรงกลางวงกราฟ ผู้ใช้อยากเห็น "เงินคงเหลือ" (รายรับ - รายจ่าย) ไม่ใช่ผล
+  // รวมของทุกสไลซ์ (ซึ่งเอารายรับมาบวกกับรายจ่ายแทนที่จะหักลบกัน)
+  const balance = income - totalExpense;
   const recentTx = transactions.slice(0, 6);
   const insight = useMemo(() => buildHomeInsight(transactions, budget), [transactions, budget]);
   const isNewUser = transactions.length === 0;
@@ -196,7 +199,14 @@ export default function HomePage() {
             </div>
           ) : (
             <div className="flex items-center gap-4">
-              <CategoryDonut data={catBreakdown} total={donutTotal} size={140} />
+              <CategoryDonut
+                data={catBreakdown}
+                total={donutTotal}
+                size={140}
+                centerLabel="เงินคงเหลือ"
+                centerValue={balance}
+                centerValueClassName={balance < 0 ? "text-ag-coral" : "text-ag-text"}
+              />
               <div className="flex flex-1 flex-col gap-2">
                 {[
                   ...catBreakdown
