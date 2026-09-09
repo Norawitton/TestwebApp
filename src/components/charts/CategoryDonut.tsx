@@ -9,14 +9,30 @@ interface CategoryDonutProps {
   data: { category: CategoryId; amount: number }[];
   total: number;
   size?: number;
+  // เดิมตรงกลางวงจะโชว์ "รวมทั้งหมด" = total เสมอ (ผลรวมของทุกสไลซ์ รวมรายรับ
+  // ด้วย) ซึ่งพอเพิ่มสไลซ์รายรับเข้ามาแล้วตัวเลขตรงกลางเลยกลายเป็นผลรวม
+  // รายรับ+รายจ่ายที่ตีความผิดได้ง่ายว่าเป็น "เงินคงเหลือ" — centerLabel/
+  // centerValue ให้ผู้เรียกเลือกโชว์อย่างอื่นแทนได้ (เช่นเงินคงเหลือจริงๆ)
+  // โดย `total` ยังคงใช้ตัดสินสไลซ์และเช็คสถานะไม่มีข้อมูลเหมือนเดิม
+  centerLabel?: string;
+  centerValue?: number;
+  centerValueClassName?: string;
 }
 
-export function CategoryDonut({ data, total, size = 180 }: CategoryDonutProps) {
+export function CategoryDonut({
+  data,
+  total,
+  size = 180,
+  centerLabel = "รวมทั้งหมด",
+  centerValue,
+  centerValueClassName = "text-ag-text",
+}: CategoryDonutProps) {
   const chartData = data.map((d) => ({
     name: CATEGORIES[d.category].label,
     value: d.amount,
     color: CATEGORIES[d.category].color,
   }));
+  const shownValue = centerValue ?? total;
 
   if (total === 0) {
     return (
@@ -50,8 +66,10 @@ export function CategoryDonut({ data, total, size = 180 }: CategoryDonutProps) {
         </PieChart>
       </ResponsiveContainer>
       <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center">
-        <span className="text-[11px] text-ag-text-secondary">รวมทั้งหมด</span>
-        <span className="ag-money text-lg font-bold text-ag-text">{formatBaht(total)}</span>
+        <span className="text-[11px] text-ag-text-secondary">{centerLabel}</span>
+        <span className={`ag-money text-lg font-bold ${centerValueClassName}`}>
+          {formatBaht(shownValue, centerValue !== undefined ? { sign: true } : undefined)}
+        </span>
       </div>
     </div>
   );
