@@ -38,9 +38,7 @@ interface TransactionFormProps {
 
 interface FormErrors {
   amount?: string;
-  merchant?: string;
   category?: string;
-  account?: string;
 }
 
 export function TransactionForm({ type, title, restrictToAccountType, existing }: TransactionFormProps) {
@@ -71,15 +69,10 @@ export function TransactionForm({ type, title, restrictToAccountType, existing }
     if (!amount || Number.isNaN(numeric) || numeric <= 0) {
       next.amount = "กรุณากรอกจำนวนเงินให้ถูกต้อง";
     }
-    if (!merchant.trim()) {
-      next.merchant = type === "income" ? "กรุณาระบุแหล่งที่มาของรายรับ" : "กรุณาระบุชื่อร้านค้าหรือรายการ";
-    }
     if (!category) {
       next.category = "กรุณาเลือกหมวดหมู่";
     }
-    if (!accountId) {
-      next.account = "กรุณาเลือกบัญชี";
-    }
+    // ร้านค้า/รายการ กับ บัญชี ไม่บังคับใส่แล้ว — แล้วแต่ผู้ใช้ว่าอยากระบุไหม
     setErrors(next);
     return Object.keys(next).length === 0;
   }
@@ -90,11 +83,15 @@ export function TransactionForm({ type, title, restrictToAccountType, existing }
     setSubmitError("");
     const numeric = Number(amount.replace(/,/g, ""));
     const status = pending ? "pending" : "completed";
+    // ถ้าผู้ใช้ไม่กรอกร้านค้า/รายการ ใช้ชื่อหมวดหมู่แทน กันไม่ให้รายการโชว์
+    // เป็นบรรทัดว่างเปล่าในหน้าประวัติ (คอลัมน์ merchant ในฐานข้อมูลก็เป็น
+    // not null อยู่แล้วด้วย)
+    const merchantValue = merchant.trim() || CATEGORIES[category].label;
     try {
       if (existing) {
         await editTransaction(existing.id, {
           amount: numeric,
-          merchant: merchant.trim(),
+          merchant: merchantValue,
           category,
           accountId,
           date: combineDateWithNow(dateStr),
@@ -108,7 +105,7 @@ export function TransactionForm({ type, title, restrictToAccountType, existing }
         await addTransaction({
           type,
           amount: numeric,
-          merchant: merchant.trim(),
+          merchant: merchantValue,
           category,
           accountId,
           date: combineDateWithNow(dateStr),
@@ -169,18 +166,14 @@ export function TransactionForm({ type, title, restrictToAccountType, existing }
         {/* Merchant / source */}
         <div>
           <label className="mb-1.5 block text-sm font-semibold text-ag-text">
-            {type === "income" ? "แหล่งที่มา" : "ร้านค้า / รายการ"}
+            {type === "income" ? "แหล่งที่มา (ไม่บังคับ)" : "ร้านค้า / รายการ (ไม่บังคับ)"}
           </label>
           <input
             value={merchant}
             onChange={(e) => setMerchant(e.target.value)}
             placeholder={type === "income" ? "เช่น เงินเดือน, งานฟรีแลนซ์" : "เช่น ร้านกาแฟ, ค่าไฟ"}
-            className={clsx(
-              "h-12 w-full rounded-2xl border bg-white px-4 text-sm text-ag-text outline-none placeholder:text-ag-text-secondary/60 focus:border-ag-blue",
-              errors.merchant ? "border-ag-coral" : "border-ag-grayblue"
-            )}
+            className="h-12 w-full rounded-2xl border border-ag-grayblue bg-white px-4 text-sm text-ag-text outline-none placeholder:text-ag-text-secondary/60 focus:border-ag-blue"
           />
-          {errors.merchant && <p className="mt-1 text-xs font-semibold text-ag-coral">{errors.merchant}</p>}
         </div>
 
         {/* Category */}
@@ -224,7 +217,7 @@ export function TransactionForm({ type, title, restrictToAccountType, existing }
 
         {/* Account */}
         <div>
-          <label className="mb-1.5 block text-sm font-semibold text-ag-text">บัญชี</label>
+          <label className="mb-1.5 block text-sm font-semibold text-ag-text">บัญชี (ไม่บังคับ)</label>
           {availableAccounts.length === 0 ? (
             <div className="rounded-2xl border border-dashed border-ag-grayblue bg-white px-4 py-4 text-center">
               <p className="text-sm text-ag-text-secondary">
@@ -256,7 +249,6 @@ export function TransactionForm({ type, title, restrictToAccountType, existing }
               ))}
             </div>
           )}
-          {errors.account && <p className="mt-1 text-xs font-semibold text-ag-coral">{errors.account}</p>}
         </div>
 
         {/* Note */}
