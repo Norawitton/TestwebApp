@@ -35,11 +35,12 @@ function HistoryContent() {
     return type === "income" || type === "expense" ? type : "all";
   });
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
-  const [accountFilter, setAccountFilter] = useState<string>("all");
+  // มาจากแจ้งเตือนยอดบัตรเครดิตที่หน้าหลัก (/history?account=<id>)
+  const [accountFilter, setAccountFilter] = useState<string>(() => searchParams.get("account") || "all");
   const [statusFilter, setStatusFilter] = useState<"all" | "pending">(() =>
     searchParams.get("status") === "pending" ? "pending" : "all"
   );
-  const [filtersOpen, setFiltersOpen] = useState(false);
+  const [filtersOpen, setFiltersOpen] = useState(() => searchParams.has("account"));
   const [swipedId, setSwipedId] = useState<string | null>(null);
 
   const filtered = useMemo(() => {

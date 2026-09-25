@@ -39,15 +39,33 @@ export function AddAccountSheet({ onClose, onSave }: AddAccountSheetProps) {
   const [name, setName] = useState("");
   const [bank, setBank] = useState<BankId | "">("");
   const [last4, setLast4] = useState("");
+  const [statementDay, setStatementDay] = useState("");
+  const [dueDay, setDueDay] = useState("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
 
   const needsBank = type === "bank" || type === "credit_card";
+  const isCreditCard = type === "credit_card";
 
   async function handleSave() {
     if (!name.trim()) { setError("กรุณาตั้งชื่อบัญชี"); return; }
     if (needsBank && !bank) { setError("กรุณาเลือกธนาคาร"); return; }
     if (last4 && !/^\d{4}$/.test(last4)) { setError("เลข 4 ตัวท้ายต้องเป็นตัวเลข 4 หลัก"); return; }
+    const statementDayNum = Number(statementDay);
+    const dueDayNum = Number(dueDay);
+    if (isCreditCard) {
+      // ใช้คำนวณยอดบิลปัจจุบันของบัตร (ดู creditCardBillInfo() ใน
+      // analytics.ts) เลยบังคับใส่ทั้งคู่ ไม่งั้นจะแจ้งเตือนยอดบัตรที่หน้าหลัก
+      // ไม่ได้เลย
+      if (!statementDay || !Number.isInteger(statementDayNum) || statementDayNum < 1 || statementDayNum > 31) {
+        setError("กรุณาระบุวันสรุปยอดบัตรเป็นตัวเลข 1-31");
+        return;
+      }
+      if (!dueDay || !Number.isInteger(dueDayNum) || dueDayNum < 1 || dueDayNum > 31) {
+        setError("กรุณาระบุวันครบกำหนดชำระเป็นตัวเลข 1-31");
+        return;
+      }
+    }
 
     setSaving(true);
     try {
@@ -61,6 +79,8 @@ export function AddAccountSheet({ onClose, onSave }: AddAccountSheetProps) {
         last4: last4 || undefined,
         colorFrom,
         colorTo,
+        statementDay: isCreditCard ? statementDayNum : undefined,
+        dueDay: isCreditCard ? dueDayNum : undefined,
       });
     } catch {
       setError("บันทึกไม่สำเร็จ ลองใหม่");
@@ -87,7 +107,7 @@ export function AddAccountSheet({ onClose, onSave }: AddAccountSheetProps) {
                 return (
                   <button
                     key={opt.type}
-                    onClick={() => { setType(opt.type); setBank(""); setLast4(""); setError(""); }}
+                    onClick={() => { setType(opt.type); setBank(""); setLast4(""); setStatementDay(""); setDueDay(""); setError(""); }}
                     className={clsx(
                       "flex flex-col items-center gap-1 rounded-2xl border py-3 transition-colors",
                       active ? "border-ag-blue bg-[#EAF4FE]" : "border-ag-grayblue bg-white"
@@ -149,6 +169,39 @@ export function AddAccountSheet({ onClose, onSave }: AddAccountSheetProps) {
                 placeholder="1234"
                 className="h-11 w-full rounded-2xl border border-ag-grayblue px-4 text-sm text-ag-text outline-none focus:border-ag-blue"
               />
+            </div>
+          )}
+
+          {/* Statement / due day — เฉพาะบัตรเครดิต ใช้คำนวณยอดบิลปัจจุบัน
+              เพื่อแจ้งเตือนที่หน้าหลัก */}
+          {isCreditCard && (
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="mb-1.5 block text-sm font-semibold text-ag-text">
+                  วันสรุปยอดบัตรเครดิต *
+                </label>
+                <input
+                  inputMode="numeric"
+                  maxLength={2}
+                  value={statementDay}
+                  onChange={(e) => setStatementDay(e.target.value.replace(/\D/g, "").slice(0, 2))}
+                  placeholder="เช่น 25"
+                  className="h-11 w-full rounded-2xl border border-ag-grayblue px-4 text-sm text-ag-text outline-none focus:border-ag-blue"
+                />
+              </div>
+              <div>
+                <label className="mb-1.5 block text-sm font-semibold text-ag-text">
+                  วันครบกำหนดชำระ *
+                </label>
+                <input
+                  inputMode="numeric"
+                  maxLength={2}
+                  value={dueDay}
+                  onChange={(e) => setDueDay(e.target.value.replace(/\D/g, "").slice(0, 2))}
+                  placeholder="เช่น 5"
+                  className="h-11 w-full rounded-2xl border border-ag-grayblue px-4 text-sm text-ag-text outline-none focus:border-ag-blue"
+                />
+              </div>
             </div>
           )}
 

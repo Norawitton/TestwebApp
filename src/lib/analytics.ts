@@ -1,4 +1,4 @@
-import { CategoryId, Transaction } from "./types";
+import { Account, CategoryId, Transaction } from "./types";
 import { monthKeyOf } from "./format";
 
 export function currentMonthKey(): string {
@@ -154,6 +154,69 @@ export function recurringMerchants(transactions: Transaction[]): { merchant: str
     }
   });
   return recurring;
+}
+
+// คืนวันที่ตรงกับ "วันที่ X ของเดือน" (day) โดย clamp ให้ไม่เกินวันสุดท้าย
+// ของเดือนนั้น (เช่น day=31 ในเดือน ก.พ. จะได้วันสุดท้ายของเดือน ก.พ. แทน)
+function clampedDateInMonth(year: number, monthIndex: number, day: number): Date {
+  const lastDay = new Date(year, monthIndex + 1, 0).getDate();
+  return new Date(year, monthIndex, Math.min(day, lastDay));
+}
+
+// วันที่ล่าสุดที่ตรงกับ "วันที่ X ของเดือน" (day) ซึ่งมาถึงแล้ว (<= referenceDate)
+// — ใช้หาวันสรุปยอดบัตรเครดิตครั้งล่าสุดที่ปิดรอบไปแล้ว
+function lastOccurrenceOnOrBefore(day: number, referenceDate: Date): Date {
+  const y = referenceDate.getFullYear();
+  const m = referenceDate.getMonth();
+  const thisMonth = clampedDateInMonth(y, m, day);
+  return thisMonth <= referenceDate ? thisMonth : clampedDateInMonth(y, m - 1, day);
+}
+
+// วันที่ถัดไปที่ตรงกับ "วันที่ X ของเดือน" (day) ซึ่งมาหลัง referenceDate
+// (> ไม่ใช่ >=) — ใช้หาวันครบกำหนดชำระของบิลที่เพิ่งสรุปยอดไป
+function nextOccurrenceAfter(day: number, referenceDate: Date): Date {
+  const y = referenceDate.getFullYear();
+  const m = referenceDate.getMonth();
+  const thisMonth = clampedDateInMonth(y, m, day);
+  return thisMonth > referenceDate ? thisMonth : clampedDateInMonth(y, m + 1, day);
+}
+
+export interface CreditCardBillInfo {
+  cycleStart: Date;
+  // วันสรุปยอดล่าสุดที่ผ่านไปแล้ว — วันที่ตัดยอดบิลปัจจุบัน (ที่กำลังรอชำระ)
+  statementDate: Date;
+  // วันครบกำหนดชำระของบิลนี้ (null ถ้าบัญชียังไม่ได้ระบุ dueDay ไว้ — เช่น
+  // บัตรที่เพิ่มไว้ก่อน migration v4)
+  dueDate: Date | null;
+  // ยอดรวมรายจ่ายที่ยืนยันแล้วซึ่งรูดก่อนวันสรุปยอด (statementDate) คือยอด
+  // ที่ถูกตัดเข้าบิลนี้จริง ไม่รวมรายการที่รูดวันเดียวกับวันสรุปยอดขึ้นไป
+  // (จะไปอยู่ในบิลรอบถัดไปแทน)
+  amount: number;
+}
+
+// สรุปยอดบิลปัจจุบันของบัญชีบัตรเครดิตหนึ่งใบ จาก account.statementDay —
+// ใช้แจ้งเตือนที่หน้าหลักว่าบัตรแต่ละใบค้างชำระเท่าไหร่ ครบกำหนดวันไหน
+export function creditCardBillInfo(
+  transactions: Transaction[],
+  account: Account,
+  referenceDate: Date = new Date()
+): CreditCardBillInfo | null {
+  if (!account.statementDay) return null;
+  const statementDate = lastOccurrenceOnOrBefore(account.statementDay, referenceDate);
+  const cycleStart = clampedDateInMonth(
+    statementDate.getFullYear(),
+    statementDate.getMonth() - 1,
+    account.statementDay
+  );
+  const amount = transactions
+    .filter((t) => t.accountId === account.id && t.type === "expense" && isConfirmed(t))
+    .filter((t) => {
+      const d = new Date(t.date);
+      return d >= cycleStart && d < statementDate;
+    })
+    .reduce((s, t) => s + t.amount, 0);
+  const dueDate = account.dueDay ? nextOccurrenceAfter(account.dueDay, statementDate) : null;
+  return { cycleStart, statementDate, dueDate, amount };
 }
 
 export function projectedEndOfMonthBalance(

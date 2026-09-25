@@ -146,6 +146,10 @@ function rowToAccount(row: any): Account {
     last4: row.last4 ?? undefined,
     colorFrom: row.color_from,
     colorTo: row.color_to,
+    // เผื่อคอลัมน์ statement_day/due_day ยังไม่ถูกเพิ่มในบางฐานข้อมูล
+    // (ก่อนรัน migration v4)
+    statementDay: row.statement_day ?? undefined,
+    dueDay: row.due_day ?? undefined,
   };
 }
 
@@ -163,21 +167,32 @@ export async function listAccounts(): Promise<Account[]> {
 export async function createAccount(input: Omit<Account, "id">): Promise<Account> {
   const userId = await getUserId();
   const id = uid("acc");
-  const { data, error } = await supabase
-    .from("accounts")
-    .insert({
-      id,
-      user_id: userId,
-      name: input.name,
-      type: input.type,
-      bank: input.bank ?? null,
-      last4: input.last4 ?? null,
-      color_from: input.colorFrom,
-      color_to: input.colorTo,
-    })
-    .select()
-    .single();
-  if (error) throw error;
+  const row = {
+    id,
+    user_id: userId,
+    name: input.name,
+    type: input.type,
+    bank: input.bank ?? null,
+    last4: input.last4 ?? null,
+    color_from: input.colorFrom,
+    color_to: input.colorTo,
+    statement_day: input.statementDay ?? null,
+    due_day: input.dueDay ?? null,
+  };
+  const { data, error } = await supabase.from("accounts").insert(row).select().single();
+  if (error) {
+    // เผื่อกรณียังไม่ได้รัน supabase-migration-v4.sql (คอลัมน์ statement_day/
+    // due_day ยังไม่มี) — ลองบันทึกใหม่โดยไม่ใส่ 2 คอลัมน์นี้ เพื่อไม่ให้
+    // ฟีเจอร์เดิม (เพิ่มบัญชี) ใช้งานไม่ได้ทั้งหมด
+    if (error.code === "42703" || error.message?.includes("statement_day") || error.message?.includes("due_day")) {
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      const { statement_day: _sd, due_day: _dd, ...rowWithoutDates } = row;
+      const retry = await supabase.from("accounts").insert(rowWithoutDates).select().single();
+      if (retry.error) throw retry.error;
+      return rowToAccount(retry.data);
+    }
+    throw error;
+  }
   return rowToAccount(data);
 }
 
@@ -194,6 +209,8 @@ export async function updateAccount(
   if (patch.last4 !== undefined) rowPatch.last4 = patch.last4;
   if (patch.colorFrom !== undefined) rowPatch.color_from = patch.colorFrom;
   if (patch.colorTo !== undefined) rowPatch.color_to = patch.colorTo;
+  if (patch.statementDay !== undefined) rowPatch.statement_day = patch.statementDay;
+  if (patch.dueDay !== undefined) rowPatch.due_day = patch.dueDay;
 
   const { data, error } = await supabase
     .from("accounts")

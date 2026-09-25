@@ -36,6 +36,14 @@ export function formatThaiDateShort(iso: string): string {
   return `${d.getDate()} ${THAI_MONTHS_SHORT[d.getMonth()]}`;
 }
 
+// เหมือน formatThaiDateShort() แต่รับ Date object ตรงๆ แทน ISO string —
+// ใช้กับวันที่ที่คำนวณในเครื่อง (เช่น วันสรุปยอด/วันครบกำหนดชำระบัตรเครดิต
+// จาก creditCardBillInfo()) ซึ่งถ้าแปลงผ่าน .toISOString() ก่อนจะเสี่ยงวันที่
+// เพี้ยนไปหนึ่งวันเพราะ toISOString() แปลงเป็น UTC
+export function formatThaiDayMonth(d: Date): string {
+  return `${d.getDate()} ${THAI_MONTHS_SHORT[d.getMonth()]}`;
+}
+
 export function formatThaiDateFull(iso: string): string {
   const d = new Date(iso);
   return `${d.getDate()} ${THAI_MONTHS_FULL[d.getMonth()]} ${toBuddhistYear(d.getFullYear())}`;

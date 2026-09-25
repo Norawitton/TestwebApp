@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { ChevronLeft, ChevronRight, CreditCard } from "lucide-react";
 import { AppShell } from "@/components/nav/AppShell";
 import { Mascot } from "@/components/mascot/Mascot";
 import { Card } from "@/components/ui/Card";
@@ -13,6 +13,7 @@ import { TransactionRow } from "@/components/transactions/TransactionRow";
 import { useAppData } from "@/hooks/useAppData";
 import {
   categoryBreakdownWithPending,
+  creditCardBillInfo,
   currentMonthKey,
   filterByMonth,
   percentChange,
@@ -20,7 +21,7 @@ import {
   sumByType,
   sumPending,
 } from "@/lib/analytics";
-import { formatBaht, formatThaiMonthYear, percent, relativeDayLabel } from "@/lib/format";
+import { formatBaht, formatThaiMonthYear, formatThaiDayMonth, percent, relativeDayLabel } from "@/lib/format";
 import { buildHomeInsight } from "@/lib/insights";
 import { CATEGORIES } from "@/lib/categories";
 
@@ -33,7 +34,7 @@ function greetingByHour(): string {
 
 export default function HomePage() {
   const router = useRouter();
-  const { loading, transactions, budget } = useAppData();
+  const { loading, transactions, accounts, budget } = useAppData();
   const [monthKey, setMonthKey] = useState(currentMonthKey());
   const isCurrentMonth = monthKey === currentMonthKey();
 
@@ -61,6 +62,18 @@ export default function HomePage() {
   // ตรงกลางวงกราฟ ผู้ใช้อยากเห็น "เงินคงเหลือ" (รายรับ - รายจ่าย) ไม่ใช่ผล
   // รวมของทุกสไลซ์ (ซึ่งเอารายรับมาบวกกับรายจ่ายแทนที่จะหักลบกัน)
   const balance = income - totalExpense;
+  // แจ้งเตือนยอดบัตรเครดิตแต่ละใบที่หน้าหลัก — เฉพาะบัตรที่ตั้งวันสรุปยอดไว้
+  // แล้ว และมียอดค้างชำระ (>0) ในบิลปัจจุบัน ไม่ผูกกับ monthKey ที่เลื่อนดู
+  // เดือนอื่นได้ด้านบน เพราะรอบบิลบัตรเครดิตอิงวันสรุปยอด ไม่ใช่เดือนปฏิทิน
+  const creditCardBills = useMemo(() => {
+    return accounts
+      .filter((a) => a.type === "credit_card" && a.statementDay)
+      .map((account) => ({ account, bill: creditCardBillInfo(transactions, account) }))
+      .filter(
+        (x): x is { account: (typeof accounts)[number]; bill: NonNullable<typeof x.bill> } =>
+          !!x.bill && x.bill.amount > 0
+      );
+  }, [accounts, transactions]);
   const recentTx = transactions.slice(0, 6);
   const insight = useMemo(() => buildHomeInsight(transactions, budget), [transactions, budget]);
   const isNewUser = transactions.length === 0;
@@ -173,6 +186,41 @@ export default function HomePage() {
             }
           />
         </div>
+
+        {/* Credit card bill notifications */}
+        {creditCardBills.length > 0 && (
+          <div className="flex flex-col gap-2 ag-animate-slide-up" style={{ animationDelay: "90ms" }}>
+            <h2 className="font-bold text-ag-text">แจ้งเตือนยอดบัตรเครดิต</h2>
+            <div className="flex flex-col gap-2">
+              {creditCardBills.map(({ account, bill }) => (
+                <button
+                  key={account.id}
+                  onClick={() => router.push(`/history?account=${account.id}`)}
+                  className="flex items-center justify-between gap-3 rounded-2xl border border-ag-grayblue bg-white px-4 py-3.5 text-left active:bg-ag-grayblue/30"
+                >
+                  <div className="flex min-w-0 items-center gap-3">
+                    <div
+                      className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full"
+                      style={{ backgroundColor: `${account.colorFrom}20` }}
+                    >
+                      <CreditCard size={18} color={account.colorFrom} />
+                    </div>
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-semibold text-ag-text">{account.name}</p>
+                      <p className="mt-0.5 text-xs text-ag-text-secondary">
+                        สรุปยอดวันที่ {formatThaiDayMonth(bill.statementDate)}
+                        {bill.dueDate && ` · ครบกำหนดชำระ ${formatThaiDayMonth(bill.dueDate)}`}
+                      </p>
+                    </div>
+                  </div>
+                  <span className="ag-money shrink-0 text-sm font-bold text-ag-coral">
+                    {formatBaht(bill.amount)}
+                  </span>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* Category donut */}
         <Card className="ag-animate-slide-up" style={{ animationDelay: "60ms" }}>

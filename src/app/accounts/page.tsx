@@ -85,6 +85,13 @@ export default function AccountsPage() {
                           <Trash2 size={14} color="#C4CDD6" />
                         </button>
                       </div>
+                      {(a.statementDay || a.dueDay) && (
+                        <p className="mt-0.5 text-[11px] text-ag-text-secondary">
+                          {a.statementDay && `สรุปยอดวันที่ ${a.statementDay}`}
+                          {a.statementDay && a.dueDay && " · "}
+                          {a.dueDay && `ครบกำหนดวันที่ ${a.dueDay}`}
+                        </p>
+                      )}
                     </div>
                   ))}
                 </div>
