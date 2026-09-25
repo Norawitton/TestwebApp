@@ -45,6 +45,11 @@ export interface Account {
   last4?: string;
   colorFrom: string;
   colorTo: string;
+  // เฉพาะบัญชีประเภท credit_card: วันที่ในแต่ละเดือน (1-31) ที่ธนาคารตัดรอบ
+  // สรุปยอด และวันครบกำหนดชำระ ใช้คำนวณยอดบิลปัจจุบันของบัตร (ดู
+  // creditCardBillInfo() ใน analytics.ts) เพื่อแจ้งเตือนที่หน้าหลัก
+  statementDay?: number;
+  dueDay?: number;
 }
 
 export type BankId =
