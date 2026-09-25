@@ -9,6 +9,11 @@ import { BANKS } from "@/lib/categories";
 interface AddAccountSheetProps {
   onClose: () => void;
   onSave: (input: Omit<Account, "id">) => Promise<void> | void;
+  // ถ้าใส่มา ฟอร์มจะพรีฟิลค่าจากบัญชีนี้และแสดงเป็นโหมดแก้ไข — ผู้เรียก
+  // (accounts/page.tsx) เป็นคนตัดสินใจว่าจะเรียก addAccount() หรือ
+  // editAccount() ใน onSave ไม่ใช่ตัว sheet เอง เหมือนแพทเทิร์นของ
+  // TransactionForm's existing prop
+  existing?: Account;
 }
 
 const TYPE_OPTIONS: { type: AccountType; label: string; icon: typeof Wallet }[] = [
@@ -34,13 +39,15 @@ function darken(hex: string, amount = 0.35): string {
   return `#${((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1)}`;
 }
 
-export function AddAccountSheet({ onClose, onSave }: AddAccountSheetProps) {
-  const [type, setType] = useState<AccountType>("credit_card");
-  const [name, setName] = useState("");
-  const [bank, setBank] = useState<BankId | "">("");
-  const [last4, setLast4] = useState("");
-  const [statementDay, setStatementDay] = useState("");
-  const [dueDay, setDueDay] = useState("");
+export function AddAccountSheet({ onClose, onSave, existing }: AddAccountSheetProps) {
+  const [type, setType] = useState<AccountType>(() => existing?.type ?? "credit_card");
+  const [name, setName] = useState(() => existing?.name ?? "");
+  const [bank, setBank] = useState<BankId | "">(() => existing?.bank ?? "");
+  const [last4, setLast4] = useState(() => existing?.last4 ?? "");
+  const [statementDay, setStatementDay] = useState(() =>
+    existing?.statementDay ? String(existing.statementDay) : ""
+  );
+  const [dueDay, setDueDay] = useState(() => (existing?.dueDay ? String(existing.dueDay) : ""));
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
 
@@ -83,7 +90,7 @@ export function AddAccountSheet({ onClose, onSave }: AddAccountSheetProps) {
         dueDay: isCreditCard ? dueDayNum : undefined,
       });
     } catch {
-      setError("บันทึกไม่สำเร็จ ลองใหม่");
+      setError(existing ? "แก้ไขไม่สำเร็จ ลองใหม่" : "บันทึกไม่สำเร็จ ลองใหม่");
     } finally {
       setSaving(false);
     }
@@ -94,7 +101,7 @@ export function AddAccountSheet({ onClose, onSave }: AddAccountSheetProps) {
       <button aria-label="ปิด" onClick={onClose} className="absolute inset-0 bg-ag-navy/50" />
       <div className="relative z-10 max-h-[90vh] w-full max-w-[480px] overflow-y-auto rounded-t-[28px] bg-white p-5 pb-8 ag-animate-slide-up">
         <div className="mx-auto mb-4 h-1.5 w-12 rounded-full bg-ag-grayblue" />
-        <h2 className="mb-4 text-lg font-bold text-ag-text">เพิ่มบัญชีใหม่</h2>
+        <h2 className="mb-4 text-lg font-bold text-ag-text">{existing ? "แก้ไขบัญชี" : "เพิ่มบัญชีใหม่"}</h2>
 
         <div className="flex flex-col gap-4">
           {/* Type selector */}
@@ -212,7 +219,7 @@ export function AddAccountSheet({ onClose, onSave }: AddAccountSheetProps) {
             disabled={saving}
             className="h-12 w-full rounded-2xl bg-ag-navy text-sm font-bold text-white disabled:opacity-60 active:scale-[0.98]"
           >
-            {saving ? "กำลังบันทึก..." : "บันทึกบัญชี"}
+            {saving ? "กำลังบันทึก..." : existing ? "บันทึกการแก้ไข" : "บันทึกบัญชี"}
           </button>
         </div>
       </div>
