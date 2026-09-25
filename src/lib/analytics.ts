@@ -183,26 +183,43 @@ function nextOccurrenceAfter(day: number, referenceDate: Date): Date {
 
 export interface CreditCardBillInfo {
   cycleStart: Date;
-  // วันสรุปยอดล่าสุดที่ผ่านไปแล้ว — วันที่ตัดยอดบิลปัจจุบัน (ที่กำลังรอชำระ)
+  // วันสรุปยอดของรอบบิลที่กำลังแสดงอยู่ — ถ้ายังไม่ถึงวันนี้ แปลว่ายังเป็น
+  // รอบที่กำลังสะสมยอดอยู่ (ยังไม่ตัดบิลจริง); ถ้าผ่านไปแล้วแปลว่าตัดบิลไป
+  // แล้วแต่ยังไม่เลยกำหนดชำระ (ดูคอมเมนต์ dueDate ด้านล่าง)
   statementDate: Date;
   // วันครบกำหนดชำระของบิลนี้ (null ถ้าบัญชียังไม่ได้ระบุ dueDay ไว้ — เช่น
   // บัตรที่เพิ่มไว้ก่อน migration v4)
   dueDate: Date | null;
-  // ยอดรวมรายจ่ายที่ยืนยันแล้วซึ่งรูดก่อนวันสรุปยอด (statementDate) คือยอด
-  // ที่ถูกตัดเข้าบิลนี้จริง ไม่รวมรายการที่รูดวันเดียวกับวันสรุปยอดขึ้นไป
-  // (จะไปอยู่ในบิลรอบถัดไปแทน)
+  // ยอดรวมรายจ่ายที่ยืนยันแล้วซึ่งรูดก่อนวันสรุปยอด (statementDate) ของรอบนี้
+  // — รายการที่รูดวันเดียวกับวันสรุปยอดขึ้นไปจะไม่ถูกนับ (ไปอยู่ในบิลรอบ
+  // ถัดไปแทน ตามกติกา "รูดตรงวันสรุปยอดพอดี = เกินรอบไปแล้ว")
   amount: number;
 }
 
-// สรุปยอดบิลปัจจุบันของบัญชีบัตรเครดิตหนึ่งใบ จาก account.statementDay —
-// ใช้แจ้งเตือนที่หน้าหลักว่าบัตรแต่ละใบค้างชำระเท่าไหร่ ครบกำหนดวันไหน
+// สรุปยอดบิลของบัญชีบัตรเครดิตหนึ่งใบที่ควรแจ้งเตือนผู้ใช้ตอนนี้ จาก
+// account.statementDay/dueDay — เริ่มจากรอบบิลล่าสุดที่ปิดยอดไปแล้ว
+// (statement ผ่านมาแล้ว) แต่ถ้าบิลนั้นเลยกำหนดชำระไปแล้วด้วย (referenceDate
+// เลย dueDate มาแล้ว) ถือว่าจ่ายไปแล้ว เลื่อนไปโชว์ยอดของรอบถัดไปแทน — ซึ่ง
+// อาจเป็นรอบที่เพิ่งปิดไปแล้ว หรือรอบที่กำลังสะสมยอดอยู่ตอนนี้ (ยังไม่ปิด)
+// ก็ได้ วนแบบนี้ไปเรื่อยๆ จนกว่าจะเจอรอบที่ยังไม่เลยกำหนดชำระ — ผลคือผู้ใช้
+// เห็นยอดที่ต้องเตรียมจ่ายเสมอ ไม่ใช่แค่บิลที่เพิ่งปิดไปแล้วเท่านั้น (เช่น
+// รายการที่เพิ่งรูดวันนี้ในรอบที่ยังไม่ปิด ก็ต้องเห็นทันทีเหมือนกัน)
 export function creditCardBillInfo(
   transactions: Transaction[],
   account: Account,
   referenceDate: Date = new Date()
 ): CreditCardBillInfo | null {
   if (!account.statementDay) return null;
-  const statementDate = lastOccurrenceOnOrBefore(account.statementDay, referenceDate);
+  let statementDate = lastOccurrenceOnOrBefore(account.statementDay, referenceDate);
+  let dueDate = account.dueDay ? nextOccurrenceAfter(account.dueDay, statementDate) : null;
+  while (dueDate && referenceDate > dueDate) {
+    statementDate = clampedDateInMonth(
+      statementDate.getFullYear(),
+      statementDate.getMonth() + 1,
+      account.statementDay
+    );
+    dueDate = account.dueDay ? nextOccurrenceAfter(account.dueDay, statementDate) : null;
+  }
   const cycleStart = clampedDateInMonth(
     statementDate.getFullYear(),
     statementDate.getMonth() - 1,
@@ -215,7 +232,6 @@ export function creditCardBillInfo(
       return d >= cycleStart && d < statementDate;
     })
     .reduce((s, t) => s + t.amount, 0);
-  const dueDate = account.dueDay ? nextOccurrenceAfter(account.dueDay, statementDate) : null;
   return { cycleStart, statementDate, dueDate, amount };
 }
 
