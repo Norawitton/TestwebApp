@@ -188,9 +188,13 @@ export default function HomePage() {
             )}
           </div>
           {pendingIncome > 0 && (
-            <p className="mb-3 rounded-xl bg-ag-yellow/20 px-3 py-2 text-sm font-semibold text-[#8a6d00]">
-              รายรับรอยืนยันอีก {formatBaht(pendingIncome)}
-            </p>
+            <button
+              onClick={() => router.push("/history?type=income&status=pending")}
+              className="mb-3 flex w-full items-center justify-between rounded-xl bg-ag-yellow/20 px-3 py-2 text-left text-sm font-semibold text-[#8a6d00] active:opacity-70"
+            >
+              <span>รายรับรอยืนยันอีก {formatBaht(pendingIncome)}</span>
+              <ChevronRight size={16} />
+            </button>
           )}
           {catBreakdown.length === 0 ? (
             <div className="flex flex-col items-center gap-2 py-4">

@@ -1,8 +1,8 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
-import { Search, SlidersHorizontal, Trash2, Pencil, Check } from "lucide-react";
+import { Suspense, useMemo, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { Search, SlidersHorizontal, Trash2, Pencil, Check, X } from "lucide-react";
 import { AppShell } from "@/components/nav/AppShell";
 import { ScreenHeader } from "@/components/ui/ScreenHeader";
 import { CategoryIcon } from "@/components/ui/CategoryIcon";
@@ -16,11 +16,29 @@ import { clsx } from "clsx";
 type TabFilter = "all" | "expense" | "income";
 
 export default function HistoryPage() {
+  return (
+    <Suspense>
+      <HistoryContent />
+    </Suspense>
+  );
+}
+
+function HistoryContent() {
   const { transactions, accounts, loading, removeTransaction, editTransaction } = useAppData();
+  const searchParams = useSearchParams();
+  // มาจากลิงก์ "รายรับรอยืนยันอีก ๆ" ที่หน้าหลัก (/history?type=income&status=pending)
+  // — อ่านครั้งเดียวตอนโหลดหน้า เหมือน state อื่น ๆ ในหน้านี้ ผู้ใช้ปรับเปลี่ยน
+  // ต่อจากตัวกรองบนหน้าจอได้ตามปกติ
   const [query, setQuery] = useState("");
-  const [tab, setTab] = useState<TabFilter>("all");
+  const [tab, setTab] = useState<TabFilter>(() => {
+    const type = searchParams.get("type");
+    return type === "income" || type === "expense" ? type : "all";
+  });
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
   const [accountFilter, setAccountFilter] = useState<string>("all");
+  const [statusFilter, setStatusFilter] = useState<"all" | "pending">(() =>
+    searchParams.get("status") === "pending" ? "pending" : "all"
+  );
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [swipedId, setSwipedId] = useState<string | null>(null);
 
@@ -29,10 +47,11 @@ export default function HistoryPage() {
       if (tab !== "all" && t.type !== tab) return false;
       if (categoryFilter !== "all" && t.category !== categoryFilter) return false;
       if (accountFilter !== "all" && t.accountId !== accountFilter) return false;
+      if (statusFilter === "pending" && t.status !== "pending") return false;
       if (query.trim() && !t.merchant.toLowerCase().includes(query.trim().toLowerCase())) return false;
       return true;
     });
-  }, [transactions, tab, categoryFilter, accountFilter, query]);
+  }, [transactions, tab, categoryFilter, accountFilter, statusFilter, query]);
 
   const grouped = useMemo(() => {
     const map = new Map<string, Transaction[]>();
@@ -98,6 +117,18 @@ export default function HistoryPage() {
             </button>
           ))}
         </div>
+
+        {/* Pending-only filter — active when coming from the "รายรับรอยืนยัน" link on
+            the Home page dashboard; ผู้ใช้ยกเลิกดูเฉพาะรอยืนยันเองได้ */}
+        {statusFilter === "pending" && (
+          <button
+            onClick={() => setStatusFilter("all")}
+            className="mt-3 flex w-full items-center justify-between gap-2 rounded-2xl bg-ag-yellow/20 px-3.5 py-2 text-sm font-semibold text-[#8a6d00]"
+          >
+            <span>กำลังแสดงเฉพาะรายการที่รอยืนยัน</span>
+            <X size={16} />
+          </button>
+        )}
 
         {/* Filters panel */}
         {filtersOpen && (
