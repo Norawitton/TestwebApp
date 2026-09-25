@@ -10,7 +10,7 @@ import { Account } from "@/lib/types";
 import { BANKS } from "@/lib/categories";
 import { AddAccountSheet } from "@/components/accounts/AddAccountSheet";
 import { RequireAuth } from "@/components/auth/RequireAuth";
-import { Plus, Trash2 } from "lucide-react";
+import { Plus, Trash2, Pencil } from "lucide-react";
 
 const TYPE_LABELS: Record<Account["type"], string> = {
   cash: "เงินสด",
@@ -20,8 +20,9 @@ const TYPE_LABELS: Record<Account["type"], string> = {
 };
 
 export default function AccountsPage() {
-  const { accounts, loading, addAccount, removeAccount } = useAppData();
-  const [showAdd, setShowAdd] = useState(false);
+  const { accounts, loading, addAccount, editAccount, removeAccount } = useAppData();
+  // "new" = เพิ่มบัญชีใหม่, Account = แก้ไขบัญชีนั้น, null = ปิด sheet
+  const [editorAccount, setEditorAccount] = useState<Account | "new" | null>(null);
   const [confirmDelete, setConfirmDelete] = useState<Account | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState("");
@@ -77,13 +78,22 @@ export default function AccountsPage() {
                           {a.name}
                           {a.last4 && <span className="text-ag-text-secondary"> •••• {a.last4}</span>}
                         </p>
-                        <button
-                          onClick={() => { setConfirmDelete(a); setDeleteError(""); }}
-                          aria-label="ลบบัตร"
-                          className="shrink-0 p-1 active:scale-90"
-                        >
-                          <Trash2 size={14} color="#C4CDD6" />
-                        </button>
+                        <div className="flex shrink-0 items-center gap-0.5">
+                          <button
+                            onClick={() => setEditorAccount(a)}
+                            aria-label="แก้ไขบัตร"
+                            className="p-1 active:scale-90"
+                          >
+                            <Pencil size={14} color="#71818E" />
+                          </button>
+                          <button
+                            onClick={() => { setConfirmDelete(a); setDeleteError(""); }}
+                            aria-label="ลบบัตร"
+                            className="p-1 active:scale-90"
+                          >
+                            <Trash2 size={14} color="#C4CDD6" />
+                          </button>
+                        </div>
                       </div>
                       {(a.statementDay || a.dueDay) && (
                         <p className="mt-0.5 text-[11px] text-ag-text-secondary">
@@ -115,13 +125,22 @@ export default function AccountsPage() {
                           {a.last4 && ` · •••• ${a.last4}`}
                         </p>
                       </div>
-                      <button
-                        onClick={() => { setConfirmDelete(a); setDeleteError(""); }}
-                        aria-label="ลบบัญชี"
-                        className="shrink-0 p-1.5 active:scale-90"
-                      >
-                        <Trash2 size={16} color="#C4CDD6" />
-                      </button>
+                      <div className="flex shrink-0 items-center gap-1">
+                        <button
+                          onClick={() => setEditorAccount(a)}
+                          aria-label="แก้ไขบัญชี"
+                          className="p-1.5 active:scale-90"
+                        >
+                          <Pencil size={16} color="#71818E" />
+                        </button>
+                        <button
+                          onClick={() => { setConfirmDelete(a); setDeleteError(""); }}
+                          aria-label="ลบบัญชี"
+                          className="p-1.5 active:scale-90"
+                        >
+                          <Trash2 size={16} color="#C4CDD6" />
+                        </button>
+                      </div>
                     </Card>
                   ))}
                 </div>
@@ -133,18 +152,23 @@ export default function AccountsPage() {
 
       {/* FAB */}
       <button
-        onClick={() => setShowAdd(true)}
+        onClick={() => setEditorAccount("new")}
         className="fixed bottom-[calc(env(safe-area-inset-bottom)+20px)] right-5 z-30 flex h-14 w-14 items-center justify-center rounded-full bg-ag-blue shadow-[0_8px_20px_rgba(22,137,245,0.4)] active:scale-90"
       >
         <Plus size={26} color="white" strokeWidth={2.5} />
       </button>
 
-      {showAdd && (
+      {editorAccount && (
         <AddAccountSheet
-          onClose={() => setShowAdd(false)}
+          existing={editorAccount === "new" ? undefined : editorAccount}
+          onClose={() => setEditorAccount(null)}
           onSave={async (input) => {
-            await addAccount(input);
-            setShowAdd(false);
+            if (editorAccount === "new") {
+              await addAccount(input);
+            } else {
+              await editAccount(editorAccount.id, input);
+            }
+            setEditorAccount(null);
           }}
         />
       )}
